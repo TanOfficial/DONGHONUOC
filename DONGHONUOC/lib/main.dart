@@ -84,57 +84,98 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blue[50],
+      backgroundColor: const Color(0xFFE3F2FD),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.water_drop, size: 80, color: Colors.blue),
-              const SizedBox(height: 16),
-              Text(_isLogin ? "ĐĂNG NHẬP" : "ĐĂNG KÝ",
-                  style: const TextStyle(
-                      fontSize: 28, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 32),
-              TextField(
-                controller: _userController,
-                decoration: const InputDecoration(
-                    labelText: "Tên đăng nhập",
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person)),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _passController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                    labelText: "Mật khẩu",
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock)),
-              ),
-              if (!_isLogin) ...[
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                      labelText: "Họ và tên",
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.badge)),
+              Container(
+                width: 100,
+                height: 100,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.blue,
                 ),
-              ],
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _xuLy,
-                style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50)),
-                child: Text(_isLogin ? "ĐĂNG NHẬP" : "ĐĂNG KÝ"),
+                child:
+                    const Icon(Icons.water_drop, size: 60, color: Colors.white),
               ),
+              const SizedBox(height: 24),
+              const Text("ĐĂNG NHẬP",
+                  style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5)),
+              const SizedBox(height: 40),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: TextField(
+                  controller: _userController,
+                  decoration: InputDecoration(
+                    hintText: "Tên đăng nhập",
+                    prefixIcon:
+                        Icon(Icons.person_outline, color: Colors.grey[600]),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: TextField(
+                  controller: _passController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: "Mật khẩu",
+                    prefixIcon:
+                        Icon(Icons.lock_outline, color: Colors.grey[600]),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton.icon(
+                  onPressed: _xuLy,
+                  icon: const Icon(Icons.water_drop, color: Colors.white),
+                  label: const Text("ĐĂNG NHẬP",
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                          color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2196F3),
+                    elevation: 2,
+                    shadowColor: Colors.blue.withOpacity(0.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               TextButton(
                 onPressed: () => setState(() => _isLogin = !_isLogin),
-                child: Text(_isLogin
-                    ? "Chưa có tài khoản? Đăng ký"
-                    : "Đã có tài khoản? Đăng nhập"),
+                child: Text(
+                  _isLogin
+                      ? "Chưa có tài khoản? Đăng ký"
+                      : "Đã có tài khoản? Đăng nhập",
+                  style: TextStyle(color: Colors.blue[700]),
+                ),
               ),
             ],
           ),
@@ -171,8 +212,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Trang Chủ"),
-        backgroundColor: Colors.blue,
+        title: const Text("Đọc Số"),
+        backgroundColor: const Color(0xFF5C6BC0),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -185,50 +226,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.blue[100]!, Colors.white],
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        color: Colors.white,
+        child: Center(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Xin chào, ${widget.fullname}!",
+              const SizedBox(height: 40),
+              // Greeting
+              const Text("Xin chào",
+                  style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF8BC34A))),
+              Text(widget.fullname,
                   style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text("Tổng số khách hàng: $_totalCustomers",
-                  style: const TextStyle(fontSize: 16)),
-              const SizedBox(height: 32),
-              Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  children: [
-                    _buildMenuCard(
-                      "Đọc Số",
-                      Icons.camera_alt,
-                      Colors.blue,
-                      () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (c) => const DanhSachKHScreen())),
-                    ),
-                    _buildMenuCard(
-                      "Quản Lý",
-                      Icons.analytics,
-                      Colors.orange,
-                      () => ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text("Chức năng đang được phát triển"))),
-                    ),
-                  ],
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF8BC34A))),
+              const SizedBox(height: 24),
+              // Avatar
+              Container(
+                width: 120,
+                height: 120,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: Image.asset(
+                  'assets/user_avatar.png',
+                  errorBuilder: (context, error, stack) =>
+                      const Icon(Icons.person, size: 80, color: Colors.grey),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text("Đăng Nhập",
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87)),
+              const SizedBox(height: 40),
+              // Menu Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildMenuButton(
+                    "Đọc Số",
+                    'assets/icon_nuoc.png',
+                    Colors.blue[700]!,
+                    () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (c) => const DanhSachKHScreen())),
+                  ),
+                  const SizedBox(width: 24),
+                  _buildMenuButton(
+                    "Quản Lý",
+                    'assets/icon_quanly.png',
+                    Colors.orange[700]!,
+                    () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text("Chức năng đang được phát triển"))),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text("Tổng số khách hàng: $_totalCustomers",
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600])),
               ),
             ],
           ),
@@ -237,31 +302,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildMenuCard(
-      String title, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildMenuButton(
+      String title, String assetPath, Color fallbackColor, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       child: Container(
+        width: 140,
+        height: 140,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-                color: color.withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4))
-          ],
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 64, color: Colors.white),
+            Image.asset(
+              assetPath,
+              height: 70,
+              width: 70,
+              errorBuilder: (context, error, stack) => Icon(
+                  title == "Đọc Số" ? Icons.water_drop : Icons.bar_chart,
+                  size: 70,
+                  color: fallbackColor),
+            ),
             const SizedBox(height: 8),
             Text(title,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800])),
           ],
         ),
       ),
@@ -1115,25 +1185,154 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Customer Info
-                      Text("MLT ${kh['ma_lo_trinh'] ?? ''}",
-                          style: const TextStyle(
-                              color: blueColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text("Danh Bộ ${kh['ma_danh_bo']}",
-                          style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600)),
+                      // Customer Info - Enhanced Layout
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          RichText(
+                            text: TextSpan(
+                              style: const TextStyle(fontSize: 14),
+                              children: [
+                                const TextSpan(
+                                    text: 'MLT ',
+                                    style: TextStyle(color: Colors.grey)),
+                                TextSpan(
+                                    text: kh['ma_lo_trinh'] ?? '',
+                                    style: const TextStyle(
+                                        color: Color(0xFF2196F3),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18)),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              children: [
+                                Checkbox(
+                                  value: kh['trang_thai'] == 1,
+                                  onChanged: null,
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                const Text('Lọc Đã Đọc',
+                                    style: TextStyle(fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
-                      Text(kh['ten_kh'] ?? '',
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text(kh['dia_chi'] ?? '',
-                          style: const TextStyle(color: Colors.grey)),
-                      const SizedBox(height: 16),
+                      RichText(
+                        text: TextSpan(
+                          style: const TextStyle(fontSize: 14),
+                          children: [
+                            const TextSpan(
+                                text: 'Danh Bộ ',
+                                style: TextStyle(color: Colors.grey)),
+                            TextSpan(
+                                text: kh['ma_danh_bo'],
+                                style: const TextStyle(
+                                    color: Color(0xFF2196F3),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 22)),
+                            const TextSpan(
+                                text: '  VT',
+                                style: TextStyle(
+                                    color: Colors.grey, fontSize: 14)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Text('Hiệu  ',
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 14)),
+                          Text(kh['ten_kh'] ?? '',
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                          const Spacer(),
+                          const Text('Cỡ  ',
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 14)),
+                          const Text('15',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Text('Địa Chỉ  ',
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 14)),
+                          Expanded(
+                            child: Text(kh['dia_chi'] ?? '',
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Text('Địa Chỉ DHN  ',
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 14)),
+                          Expanded(
+                            child: Text(kh['dia_chi'] ?? '',
+                                style: const TextStyle(
+                                    color: Color(0xFF2196F3),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Text('Họ Tên  ',
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 14)),
+                          Expanded(
+                            child: Text((kh['ten_kh'] ?? '').toUpperCase(),
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Text('Ghi Chú  ',
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 14)),
+                          Expanded(
+                            child: Text(kh['ghi_chu'] ?? 'kè 68 dinh liet',
+                                style: const TextStyle(
+                                    fontSize: 14, fontStyle: FontStyle.italic)),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      // Tình Trạng
+                      Row(
+                        children: [
+                          const Text('Tình Trạng',
+                              style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
 
                       // Stats Row
                       Row(
