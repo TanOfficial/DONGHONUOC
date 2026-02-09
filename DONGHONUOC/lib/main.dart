@@ -295,9 +295,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.pushReplacement(context,
-                  MaterialPageRoute(builder: (c) => const LoginScreen()));
+            onPressed: () async {
+              // Hiển thị dialog xác nhận đăng xuất
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Đăng xuất'),
+                  content: const Text('Bạn có chắc chắn muốn đăng xuất?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Hủy'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2196F3),
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Đăng xuất'),
+                    ),
+                  ],
+                ),
+              );
+
+              // Nếu user xác nhận đăng xuất
+              if (confirm == true) {
+                if (!context.mounted) return;
+
+                // Hiển thị thông báo đăng xuất thành công
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Đã đăng xuất thành công!'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+
+                // Chờ 1 giây để user thấy notification
+                await Future.delayed(const Duration(milliseconds: 800));
+
+                if (!context.mounted) return;
+
+                // Navigate về màn hình đăng nhập
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (c) => const LoginScreen()),
+                );
+              }
             },
           )
         ],
@@ -1167,9 +1212,80 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
       } else {
         _csMoiController.clear();
       }
-      _ghiChuController.text = kh['ghi_chu'] ?? '';
+
       _calculateTieuThu();
     });
+  }
+
+  Future<int?> _pickImageFromGallery() async {
+    try {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+      if (image == null) return null;
+
+      // Crop ảnh
+      final croppedFile = await _cropImageOCR(image.path);
+      if (croppedFile == null) return null;
+
+      // OCR
+      final textRecognizer =
+          TextRecognizer(script: TextRecognitionScript.latin);
+      final inputImage = InputImage.fromFile(croppedFile);
+      final RecognizedText recognizedText =
+          await textRecognizer.processImage(inputImage);
+      await textRecognizer.close();
+
+      String rawText = recognizedText.text;
+      String cleaned = _cleanTextOCR(rawText);
+
+      if (cleaned.isEmpty) {
+        if (!mounted) return null;
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Không nhận diện được số!")));
+        return null;
+      }
+
+      return int.tryParse(cleaned);
+    } catch (e) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Lỗi xử lý ảnh: $e")));
+      return null;
+    }
+  }
+
+  Future<File?> _cropImageOCR(String path) async {
+    final bytes = await File(path).readAsBytes();
+    img.Image? src = img.decodeImage(bytes);
+    if (src == null) return null;
+
+    final int cropH = (src.height * 0.4).toInt();
+    final int cropW = (src.width * 0.6).toInt();
+    final int x = (src.width - cropW) ~/ 2;
+    final int y = (src.height - cropH) ~/ 2;
+
+    img.Image cropped =
+        img.copyCrop(src, x: x, y: y, width: cropW, height: cropH);
+
+    final croppedPath = path
+        .replaceAll('.jpg', '_cropped.jpg')
+        .replaceAll('.png', '_cropped.png');
+    final croppedFile = File(croppedPath);
+    await croppedFile.writeAsBytes(img.encodeJpg(cropped));
+
+    return croppedFile;
+  }
+
+  String _cleanTextOCR(String raw) {
+    String cleaned = raw
+        .toUpperCase()
+        .replaceAll('O', '0')
+        .replaceAll('I', '1')
+        .replaceAll('S', '5')
+        .replaceAll('G', '6');
+    cleaned = cleaned.replaceAll(RegExp(r'[^0-9]'), '');
+    return cleaned;
   }
 
   void _navigatePrevious() {
@@ -1578,17 +1694,58 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                     const Spacer(),
                                     InkWell(
                                       onTap: () async {
-                                        final res = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (c) =>
-                                                  CameraScreen(khachHang: kh)),
+                                        // Dialog chọn Camera hoặc Gallery
+                                        final choice = await showDialog<String>(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Chọn nguồn ảnh'),
+                                            content: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                ListTile(
+                                                  leading: const Icon(
+                                                      Icons.camera_alt,
+                                                      color: Color(0xFF2196F3)),
+                                                  title: const Text('Chụp ảnh'),
+                                                  onTap: () => Navigator.pop(
+                                                      context, 'camera'),
+                                                ),
+                                                ListTile(
+                                                  leading: const Icon(
+                                                      Icons.photo_library,
+                                                      color: Color(0xFF2196F3)),
+                                                  title: const Text(
+                                                      'Chọn từ thư viện'),
+                                                  onTap: () => Navigator.pop(
+                                                      context, 'gallery'),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         );
-                                        if (res != null && res is int) {
+
+                                        if (choice == null) return;
+
+                                        int? result;
+                                        if (choice == 'camera') {
+                                          // Mở CameraScreen
+                                          result = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (c) => CameraScreen(
+                                                    khachHang: kh)),
+                                          );
+                                        } else {
+                                          // Chọn ảnh từ Gallery
+                                          result =
+                                              await _pickImageFromGallery();
+                                        }
+
+                                        if (result != null) {
                                           setState(() {
                                             _csMoiController.text =
-                                                res.toString();
-                                            kh['chi_so_moi'] = res;
+                                                result.toString();
+                                            kh['chi_so_moi'] = result;
                                             kh['trang_thai'] = 1;
                                           });
                                         }
