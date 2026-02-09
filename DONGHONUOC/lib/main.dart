@@ -1368,7 +1368,14 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
 
                       // History Table
                       Table(
-                        border: TableBorder.all(color: Colors.grey[300]!),
+                        border: TableBorder.all(
+                            color: Colors.grey[400]!, width: 1.5),
+                        columnWidths: const {
+                          0: FlexColumnWidth(1.2),
+                          1: FlexColumnWidth(1),
+                          2: FlexColumnWidth(1),
+                          3: FlexColumnWidth(1),
+                        },
                         children: [
                           TableRow(children: [
                             _buildCell("Code", isHeader: true),
