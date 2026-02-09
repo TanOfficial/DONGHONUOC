@@ -269,14 +269,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 height: 120,
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFF2196F3),
+                  shape: BoxShape.circle,
                 ),
-                child: Image.asset(
-                  'assets/user_avatar.png',
-                  errorBuilder: (context, error, stack) =>
-                      const Icon(Icons.person, size: 80, color: Colors.grey),
-                ),
+                child:
+                    const Icon(Icons.water_drop, size: 60, color: Colors.white),
               ),
               const SizedBox(height: 16),
               const Text("Đăng Nhập",
