@@ -275,12 +275,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child:
                     const Icon(Icons.water_drop, size: 60, color: Colors.white),
               ),
-              const SizedBox(height: 16),
-              const Text("Đăng Nhập",
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87)),
               const SizedBox(height: 40),
               // Menu Buttons
               Row(
