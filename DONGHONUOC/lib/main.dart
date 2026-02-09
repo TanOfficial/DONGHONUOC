@@ -9,6 +9,7 @@ import 'logger.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() async {
@@ -216,11 +217,67 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _totalCustomers = 0;
+  String? _avatarPath;
 
   @override
   void initState() {
     super.initState();
     _loadStats();
+    _loadAvatar();
+  }
+
+  Future<void> _loadAvatar() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _avatarPath = prefs.getString('avatar_path');
+    });
+  }
+
+  Future<void> _saveAvatar(String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('avatar_path', path);
+    setState(() {
+      _avatarPath = path;
+    });
+  }
+
+  Future<void> _pickAvatarPhoto() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Chọn ảnh đại diện'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Color(0xFF2196F3)),
+              title: const Text('Chụp ảnh'),
+              onTap: () => Navigator.pop(context, 'camera'),
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.photo_library, color: Color(0xFF2196F3)),
+              title: const Text('Chọn từ thư viện'),
+              onTap: () => Navigator.pop(context, 'gallery'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null) {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: result == 'camera' ? ImageSource.camera : ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        await _saveAvatar(image.path);
+      }
+    }
   }
 
   Future<void> _loadStats() async {
