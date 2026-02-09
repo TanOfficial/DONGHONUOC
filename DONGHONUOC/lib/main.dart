@@ -1222,8 +1222,12 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                             child: Row(
                               children: [
                                 Checkbox(
-                                  value: kh['trang_thai'] == 1,
-                                  onChanged: null,
+                                  value: _filterShowRead,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _filterShowRead = value ?? false;
+                                    });
+                                  },
                                   materialTapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
                                   visualDensity: VisualDensity.compact,
