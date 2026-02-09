@@ -1217,77 +1217,6 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     });
   }
 
-  Future<int?> _pickImageFromGallery() async {
-    try {
-      final picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-      if (image == null) return null;
-
-      // Crop ảnh
-      final croppedFile = await _cropImageOCR(image.path);
-      if (croppedFile == null) return null;
-
-      // OCR
-      final textRecognizer =
-          TextRecognizer(script: TextRecognitionScript.latin);
-      final inputImage = InputImage.fromFile(croppedFile);
-      final RecognizedText recognizedText =
-          await textRecognizer.processImage(inputImage);
-      await textRecognizer.close();
-
-      String rawText = recognizedText.text;
-      String cleaned = _cleanTextOCR(rawText);
-
-      if (cleaned.isEmpty) {
-        if (!mounted) return null;
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Không nhận diện được số!")));
-        return null;
-      }
-
-      return int.tryParse(cleaned);
-    } catch (e) {
-      if (!mounted) return null;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Lỗi xử lý ảnh: $e")));
-      return null;
-    }
-  }
-
-  Future<File?> _cropImageOCR(String path) async {
-    final bytes = await File(path).readAsBytes();
-    img.Image? src = img.decodeImage(bytes);
-    if (src == null) return null;
-
-    final int cropH = (src.height * 0.4).toInt();
-    final int cropW = (src.width * 0.6).toInt();
-    final int x = (src.width - cropW) ~/ 2;
-    final int y = (src.height - cropH) ~/ 2;
-
-    img.Image cropped =
-        img.copyCrop(src, x: x, y: y, width: cropW, height: cropH);
-
-    final croppedPath = path
-        .replaceAll('.jpg', '_cropped.jpg')
-        .replaceAll('.png', '_cropped.png');
-    final croppedFile = File(croppedPath);
-    await croppedFile.writeAsBytes(img.encodeJpg(cropped));
-
-    return croppedFile;
-  }
-
-  String _cleanTextOCR(String raw) {
-    String cleaned = raw
-        .toUpperCase()
-        .replaceAll('O', '0')
-        .replaceAll('I', '1')
-        .replaceAll('S', '5')
-        .replaceAll('G', '6');
-    cleaned = cleaned.replaceAll(RegExp(r'[^0-9]'), '');
-    return cleaned;
-  }
-
   void _navigatePrevious() {
     if (_currentIndex > 0) {
       _saveCurrentTemp();
@@ -1361,6 +1290,84 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     });
 
     _navigateNext();
+  }
+
+  Future<int?> _pickImageFromGallery() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image == null) return null;
+
+    if (!mounted) return null;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text("Đang xử lý ảnh...")));
+
+    final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+
+    try {
+      final croppedFile = await _cropImage(image.path);
+      if (croppedFile == null) return null;
+
+      final inputImage = InputImage.fromFile(croppedFile);
+      final RecognizedText recognizedText =
+          await textRecognizer.processImage(inputImage);
+
+      String rawText = recognizedText.text;
+      String cleaned = _cleanText(rawText);
+
+      if (cleaned.isNotEmpty) {
+        return int.tryParse(cleaned);
+      } else {
+        if (!mounted) return null;
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Không nhận diện được số!")));
+        return null;
+      }
+    } catch (e) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Lỗi: $e")));
+      return null;
+    } finally {
+      textRecognizer.close();
+    }
+  }
+
+  Future<File?> _cropImage(String path) async {
+    final bytes = await File(path).readAsBytes();
+    img.Image? src = img.decodeImage(bytes);
+    if (src == null) return null;
+
+    final int cropH = (src.height * 0.4).toInt();
+    final int cropW = (src.width * 0.6).toInt();
+    final int x = (src.width - cropW) ~/ 2;
+    final int y = (src.height - cropH) ~/ 2;
+
+    img.Image cropped =
+        img.copyCrop(src, x: x, y: y, width: cropW, height: cropH);
+
+    final croppedPath = path.replaceAll('.jpg', '_cropped.jpg');
+    final croppedFile = File(croppedPath);
+    await croppedFile.writeAsBytes(img.encodeJpg(cropped));
+
+    return croppedFile;
+  }
+
+  String _cleanText(String raw) {
+    String cleaned = raw
+        .toUpperCase()
+        .replaceAll('O', '0')
+        .replaceAll('I', '1')
+        .replaceAll('S', '5')
+        .replaceAll('G', '6');
+
+    RegExp exp = RegExp(r'\d{3,6}');
+    Iterable<RegExpMatch> matches = exp.allMatches(cleaned);
+
+    if (matches.isNotEmpty) {
+      return matches.first.group(0)!;
+    }
+    return "";
   }
 
   @override
