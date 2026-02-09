@@ -144,6 +144,26 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
+              if (!_isLogin) ...[
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: TextField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      hintText: "Họ và tên",
+                      prefixIcon:
+                          Icon(Icons.badge_outlined, color: Colors.grey[600]),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.all(16),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
@@ -151,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _xuLy,
                   icon: const Icon(Icons.water_drop, color: Colors.white),
-                  label: const Text("ĐĂNG NHẬP",
+                  label: Text(_isLogin ? "ĐĂNG NHẬP" : "ĐĂNG KÝ",
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -983,6 +1003,7 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
   final TextEditingController _ghiChuController = TextEditingController();
   int _tieuThu = 0;
   String _selectedCode = '40';
+  bool _filterShowRead = false;
 
   @override
   void initState() {
@@ -1145,20 +1166,6 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
         title: const Text("Ghi Chỉ Số Nước"),
         backgroundColor: blueColor,
         foregroundColor: Colors.white,
-        actions: [
-          Checkbox(
-            value: kh['trang_thai'] == 1,
-            onChanged: null,
-            fillColor: WidgetStateProperty.all(Colors.white),
-            checkColor: blueColor,
-          ),
-          const Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: Center(
-                child:
-                    Text("Lọc Đã Đọc", style: TextStyle(color: Colors.white))),
-          ),
-        ],
       ),
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
