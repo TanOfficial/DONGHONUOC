@@ -1407,9 +1407,12 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                             text: TextSpan(
                               style: const TextStyle(fontSize: 14),
                               children: [
-                                const TextSpan(
+                                TextSpan(
                                     text: 'MLT ',
-                                    style: TextStyle(color: Colors.grey)),
+                                    style: TextStyle(
+                                        color: Colors.grey[800],
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600)),
                                 TextSpan(
                                     text: kh['ma_lo_trinh'] ?? '',
                                     style: const TextStyle(
@@ -1453,7 +1456,10 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                           children: [
                             const TextSpan(
                                 text: 'Danh Bộ ',
-                                style: TextStyle(color: Colors.grey)),
+                                style: TextStyle(
+                                    color: Colors.grey[800],
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600)),
                             TextSpan(
                                 text: kh['ma_danh_bo'],
                                 style: const TextStyle(
@@ -1463,23 +1469,29 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                             const TextSpan(
                                 text: '  VT',
                                 style: TextStyle(
-                                    color: Colors.grey, fontSize: 14)),
+                                    color: Colors.grey[800],
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          const Text('Hiệu  ',
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 14)),
+                          Text('Hiệu  ',
+                              style: TextStyle(
+                                  color: Colors.grey[800],
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600)),
                           Text(kh['ten_kh'] ?? '',
                               style: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold)),
                           const Spacer(),
-                          const Text('Cỡ  ',
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 14)),
+                          Text('Cỡ  ',
+                              style: TextStyle(
+                                  color: Colors.grey[800],
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600)),
                           const Text('15',
                               style: TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.w600)),
@@ -1488,9 +1500,11 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Text('Địa Chỉ  ',
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 14)),
+                          Text('Địa Chỉ  ',
+                              style: TextStyle(
+                                  color: Colors.grey[800],
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600)),
                           Expanded(
                             child: Text(kh['dia_chi'] ?? '',
                                 style: const TextStyle(
@@ -1501,9 +1515,11 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Text('Địa Chỉ DHN  ',
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 14)),
+                          Text('Địa Chỉ DHN  ',
+                              style: TextStyle(
+                                  color: Colors.grey[800],
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600)),
                           Expanded(
                             child: Text(kh['dia_chi'] ?? '',
                                 style: const TextStyle(
@@ -1516,9 +1532,11 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Text('Họ Tên  ',
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 14)),
+                          Text('Họ Tên  ',
+                              style: TextStyle(
+                                  color: Colors.grey[800],
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600)),
                           Expanded(
                             child: Text((kh['ten_kh'] ?? '').toUpperCase(),
                                 style: const TextStyle(
