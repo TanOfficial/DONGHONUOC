@@ -1593,38 +1593,16 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                           });
                                         }
                                       },
-                                      child: Stack(
-                                        children: [
-                                          Container(
-                                            width: 48,
-                                            height: 48,
-                                            decoration: BoxDecoration(
-                                              color: Colors.grey[300],
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: const Icon(Icons.camera_alt,
-                                                color: Colors.black54,
-                                                size: 28),
-                                          ),
-                                          Positioned(
-                                            top: 0,
-                                            right: 0,
-                                            child: Container(
-                                              width: 20,
-                                              height: 20,
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF2196F3),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: const Icon(
-                                                Icons.add_a_photo,
-                                                size: 12,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                                      child: Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[300],
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(Icons.camera_alt,
+                                            color: Colors.black54, size: 28),
                                       ),
                                     ),
                                   ],
@@ -1764,7 +1742,7 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
 
   Widget _buildStatBox(String label, String value, Color color) {
     return Container(
-      width: 130,
+      width: 110,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
           color: color.withOpacity(0.1),
