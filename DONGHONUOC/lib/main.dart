@@ -1836,7 +1836,7 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                         ScaffoldMessenger.of(context)
                             .showSnackBar(SnackBar(content: Text("❌ Lỗi: $e")));
                       }
-                    }),
+                    }, color: Colors.teal),
                     _buildBottomIcon(Icons.edit_note, "Ghi Chú", () {
                       _ghiChuController.text = kh['ghi_chu'] ?? '';
                       showDialog(
@@ -1856,7 +1856,9 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                 child: const Text("Đóng")),
                             ElevatedButton(
                               onPressed: () {
-                                kh['ghi_chu'] = _ghiChuController.text;
+                                setState(() {
+                                  kh['ghi_chu'] = _ghiChuController.text;
+                                });
                                 Navigator.pop(context);
                               },
                               child: const Text("Lưu"),
@@ -1864,7 +1866,7 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                           ],
                         ),
                       );
-                    }),
+                    }, color: Colors.amber[800]),
                     _buildBottomIcon(Icons.print, "In", () async {
                       try {
                         final receipt = "===== HÓA ĐƠN NƯỚC =====\n" +
@@ -1891,7 +1893,7 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                         ScaffoldMessenger.of(context)
                             .showSnackBar(SnackBar(content: Text("❌ Lỗi: $e")));
                       }
-                    }),
+                    }, color: Colors.purple),
                     _buildBottomIcon(Icons.save, "Lưu", _luuChiSo,
                         color: Colors.blue[800]),
                   ],
