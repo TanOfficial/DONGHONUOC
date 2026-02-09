@@ -320,17 +320,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF8BC34A))),
               const SizedBox(height: 24),
-              // Avatar
-              Container(
-                width: 120,
-                height: 120,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2196F3),
-                  shape: BoxShape.circle,
+              // Avatar with camera icon
+              GestureDetector(
+                onTap: _pickAvatarPhoto,
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 120,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2196F3),
+                        shape: BoxShape.circle,
+                      ),
+                      child:
+                          _avatarPath != null && File(_avatarPath!).existsSync()
+                              ? ClipOval(
+                                  child: Image.file(
+                                    File(_avatarPath!),
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : const Icon(Icons.water_drop,
+                                  size: 60, color: Colors.white),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: const Color(0xFF2196F3), width: 2),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          size: 20,
+                          color: Color(0xFF2196F3),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                child:
-                    const Icon(Icons.water_drop, size: 60, color: Colors.white),
               ),
               const SizedBox(height: 40),
               // Menu Buttons
@@ -1531,7 +1565,8 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                             ],
                           ),
                           const SizedBox(width: 20),
-                          Expanded(
+                          SizedBox(
+                            width: 200,
                             child: Column(
                               children: [
                                 Row(
@@ -1558,16 +1593,38 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                           });
                                         }
                                       },
-                                      child: Container(
-                                        width: 48,
-                                        height: 48,
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[300],
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: const Icon(Icons.camera_alt,
-                                            color: Colors.black54),
+                                      child: Stack(
+                                        children: [
+                                          Container(
+                                            width: 48,
+                                            height: 48,
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[300],
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: const Icon(Icons.camera_alt,
+                                                color: Colors.black54,
+                                                size: 28),
+                                          ),
+                                          Positioned(
+                                            top: 0,
+                                            right: 0,
+                                            child: Container(
+                                              width: 20,
+                                              height: 20,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF2196F3),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.add_a_photo,
+                                                size: 12,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
