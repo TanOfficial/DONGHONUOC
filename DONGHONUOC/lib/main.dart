@@ -1058,16 +1058,25 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
         await DatabaseHelper().layLichSuDoc(kh['ma_danh_bo'], limit: 3);
 
     setState(() {
-      _history = lichSu.reversed.map((item) {
-        return {
-          'code': 'Kỳ ${item['ky']}',
-          'cs': item['chi_so'].toString(),
-          'tt': item['tieu_thu'].toString(),
-        };
-      }).toList();
+      if (lichSu.isEmpty) {
+        // Dummy data for testing when no history exists
+        _history = [
+          {'code': '40', 'cs': '5577', 'tt': '300'},
+          {'code': '40', 'cs': '5862', 'tt': '285'},
+          {'code': '40', 'cs': '6119', 'tt': '257'},
+        ];
+      } else {
+        _history = lichSu.reversed.map((item) {
+          return {
+            'code': item['code']?.toString() ?? '40',
+            'cs': item['chi_so'].toString(),
+            'tt': item['tieu_thu'].toString(),
+          };
+        }).toList();
 
-      while (_history.length < 3) {
-        _history.add({'code': '--', 'cs': '--', 'tt': '--'});
+        while (_history.length < 3) {
+          _history.add({'code': '--', 'cs': '--', 'tt': '--'});
+        }
       }
 
       _selectedCode = kh['code'] ?? '40';
