@@ -1682,14 +1682,14 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
   Widget _buildCell(String text,
       {Color? bg, Alignment align = Alignment.center, bool isHeader = false}) {
     return Container(
-      height: 45,
+      height: 50,
       alignment: align,
       color: bg ?? Colors.transparent,
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Text(text,
           style: TextStyle(
               fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
-              fontSize: isHeader ? 14 : 16,
+              fontSize: isHeader ? 14 : 18,
               color: isHeader ? Colors.grey[700] : Colors.black87)),
     );
   }
