@@ -57,5 +57,8 @@ namespace DONGHONUOC_API.Models
 
         [Column("GhiChu")]
         public string? GhiChu { get; set; }
+
+        [Column("ChiSo")]
+        public int? ChiSo { get; set; }
     }
 }

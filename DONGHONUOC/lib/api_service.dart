@@ -120,12 +120,17 @@ class ApiService {
       }
       if (params.isNotEmpty) url += '?${params.join('&')}';
 
+      print('🌐 GET $url');
       final response = await http.get(Uri.parse(url));
+      print(
+          '🌐 Status: ${response.statusCode}, Body length: ${response.body.length}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
+        print('🌐 DocChiSo parsed: ${data.length} items');
         return data.map((item) => _convertDocSoItem(item)).toList();
       }
+      print('🌐 DocChiSo failed: ${response.body}');
       return [];
     } catch (e) {
       print('❌ Lỗi lấy danh sách đọc số: $e');
@@ -137,22 +142,35 @@ class ApiService {
   Future<bool> ghiChiSo(String maDanhBo, int maKyDoc, int chiSoMoi,
       {String code = '40', String ghiChu = ''}) async {
     try {
+      final url = '$_baseUrl/docchiso/ghi';
+      final body = jsonEncode({
+        'MaDanhBo': maDanhBo,
+        'MaKyDoc': maKyDoc,
+        'ChiSoMoi': chiSoMoi,
+        'MaCode': code,
+        'GhiChu': ghiChu,
+        'NguoiDoc': _currentUsername,
+      });
+
+      print('🌐 POST $url');
+      print('📦 Body: $body');
+
       final response = await http.post(
-        Uri.parse('$_baseUrl/docchiso/ghi'),
+        Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'MaDanhBo': maDanhBo,
-          'MaKyDoc': maKyDoc,
-          'ChiSoMoi': chiSoMoi,
-          'MaCode': code,
-          'GhiChu': ghiChu,
-          'NguoiDoc': _currentUsername,
-        }),
+        body: body,
       );
 
-      return response.statusCode == 200;
+      print('🌐 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print('❌ Lỗi ghi chỉ số (Server): ${response.body}');
+        return false;
+      }
     } catch (e) {
-      print('❌ Lỗi ghi chỉ số: $e');
+      print('❌ Lỗi ghi chỉ số (Client): $e');
       return false;
     }
   }
@@ -184,7 +202,16 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((item) => Map<String, dynamic>.from(item)).toList();
+        return data
+            .map((item) => <String, dynamic>{
+                  'ky': item['Ky'],
+                  'nam': item['Nam'],
+                  'chi_so': item['ChiSo'] ?? 0,
+                  'tieu_thu': item['TieuThu'] ?? 0,
+                  'code': item['MaCode'] ?? '40',
+                  'ngay_doc': item['NgayDoc'],
+                })
+            .toList();
       }
       return [];
     } catch (e) {
@@ -233,8 +260,8 @@ class ApiService {
       'ma_danh_bo': item['MaDanhBo'],
       'ten_kh': item['HoTen'],
       'dia_chi': item['DiaChi'],
-      'chi_so_cu': 0,
-      'chi_so_moi': 0,
+      'chi_so_cu': item['ChiSo'] ?? 0, // Fallback: Use base ChiSo
+      'chi_so_moi': item['ChiSo'] ?? 0, // Fallback: New index starts at base
       'trang_thai': 0,
       'ma_lo_trinh': item['MaLoTrinh'],
       'hieu': item['Hieu'],

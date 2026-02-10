@@ -500,6 +500,7 @@ class DanhSachKHScreen extends StatefulWidget {
 class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
   List<Map<String, dynamic>> _danhSachKH = [];
   List<Map<String, dynamic>> _filteredList = [];
+  // int? _currentMaKyDoc; // Removed unused field
 
   final TextEditingController _searchController = TextEditingController();
   bool _showSearch = false;
@@ -543,11 +544,58 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
   }
 
   Future<void> _taiDuLieu() async {
-    final data = await api.layDanhSach();
-    setState(() {
-      _danhSachKH = data;
-      _filteredList = List.from(data);
-    });
+    try {
+      // 1. Lấy danh sách kỳ đọc
+      final kyDocList = await api.layDanhSachKyDoc();
+
+      if (kyDocList.isNotEmpty) {
+        // Duyệt qua các kỳ đọc để tìm kỳ có dữ liệu
+        for (var ky in kyDocList) {
+          final maKy = ky['MaKyDoc'] as int?;
+          if (maKy == null) continue;
+
+          print('🔍 Checking KyDoc: $maKy');
+          final data = await api.layDanhSachDocSo(maKy);
+
+          if (data.isNotEmpty) {
+            print('✅ Found data in KyDoc: $maKy (${data.length} records)');
+            setState(() {
+              _danhSachKH = data;
+              _filteredList = List.from(data);
+            });
+            return;
+          }
+        }
+      }
+
+      // 3. Fallback: Nếu không tìm thấy kỳ nào có dữ liệu, lấy danh sách khách hàng
+      print('⚠️ No data found in any KyDoc, loading from KhachHang table');
+      final data = await api.layDanhSach();
+
+      // Inject MaKyDoc từ kỳ mới nhất để có thể lưu dữ liệu
+      if (kyDocList.isNotEmpty) {
+        final latestMaKy = kyDocList.first['MaKyDoc'] as int?;
+        if (latestMaKy != null) {
+          print(
+              '💉 Injecting MaKyDoc=$latestMaKy into ${data.length} fallback items');
+          for (var item in data) {
+            item['ma_ky_doc'] = latestMaKy;
+          }
+        }
+      }
+
+      setState(() {
+        _danhSachKH = data;
+        _filteredList = List.from(data);
+      });
+    } catch (e) {
+      print('❌ Lỗi tải dữ liệu: $e');
+      final data = await api.layDanhSach();
+      setState(() {
+        _danhSachKH = data;
+        _filteredList = List.from(data);
+      });
+    }
   }
 
   void _showFilterSortDialog() {
@@ -884,15 +932,42 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
                 return Card(
                   margin:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: trangThai
+                        ? BorderSide.none
+                        : const BorderSide(color: Colors.orange, width: 1.5),
+                  ),
+                  color: trangThai ? Colors.white : const Color(0xFFFFF8E1),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor:
-                          trangThai ? Colors.green : Colors.grey[400],
-                      child: Icon(trangThai ? Icons.check : Icons.pending,
+                      backgroundColor: trangThai ? Colors.green : Colors.orange,
+                      child: Icon(trangThai ? Icons.check : Icons.schedule,
                           color: Colors.white),
                     ),
-                    title: Text(kh['ten_kh'] ?? '',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(kh['ten_kh'] ?? '',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                        if (!trangThai)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text('Chưa đọc',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                      ],
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -998,7 +1073,10 @@ class _CameraScreenState extends State<CameraScreen> {
       if (!mounted) return;
 
       if (cleaned.isNotEmpty) {
-        Navigator.pop(context, int.tryParse(cleaned));
+        Navigator.pop(context, {
+          'chiSo': int.tryParse(cleaned),
+          'imagePath': croppedFile.path,
+        });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Không nhận diện được số!")));
@@ -1167,6 +1245,7 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
   int _tieuThu = 0;
   String _selectedCode = '40';
   bool _filterShowRead = false;
+  String? _capturedImagePath; // Đường dẫn ảnh đồng hồ đã chụp
 
   @override
   void initState() {
@@ -1213,52 +1292,109 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     }
   }
 
+  // Biến kiểm soát request async để tránh race condition
+  int _loadingRequestId = 0;
+
   void _loadDataForCurrentIndex() async {
     if (_currentIndex < 0 || _currentIndex >= _danhSachKH.length) return;
+
+    // Increment Request ID: Đánh dấu request mới nhất
+    _loadingRequestId++;
+    final int myRequestId = _loadingRequestId;
+
     final kh = _danhSachKH[_currentIndex];
 
-    final lichSu = await api.layLichSuDoc(kh['ma_danh_bo'], limit: 3);
-
+    // Reset state first to avoid stale data
     setState(() {
-      if (lichSu.isEmpty) {
-        // Dummy data for testing when no history exists
-        _history = [
-          {'code': '40', 'cs': '5577', 'tt': '300'},
-          {'code': '40', 'cs': '5862', 'tt': '285'},
-          {'code': '40', 'cs': '6119', 'tt': '257'},
-        ];
-      } else {
-        _history = lichSu.reversed.map((item) {
-          return {
-            'code': item['code']?.toString() ?? '40',
-            'cs': item['chi_so'].toString(),
-            'tt': item['tieu_thu'].toString(),
-          };
-        }).toList();
+      _capturedImagePath = null;
+      _history = []; // Clear history temporarily while loading
 
-        while (_history.length < 3) {
-          _history.add({'code': '--', 'cs': '--', 'tt': '--'});
-        }
+      // Load saved values or defaults
+      _selectedCode = kh['code']?.toString() ?? '40';
+      if (kh['ghi_chu'] != null) {
+        _ghiChuController.text = kh['ghi_chu'].toString();
+      } else {
+        _ghiChuController.clear();
       }
 
-      _selectedCode = kh['code'] ?? '40';
-      if (kh['chi_so_moi'] != null && kh['chi_so_moi'] > 0) {
+      // Handle ChiSoMoi
+      if (kh['chi_so_moi'] != null &&
+          (kh['chi_so_moi'] is int
+              ? kh['chi_so_moi'] > 0
+              : int.tryParse(kh['chi_so_moi'].toString()) != null)) {
         _csMoiController.text = kh['chi_so_moi'].toString();
       } else {
         _csMoiController.clear();
       }
 
+      // Recalculate TieuThu immediately using existing data in local list
+      // Do NOT set _tieuThu = 0 here to avoid flickering
       _calculateTieuThu();
     });
+
+    try {
+      final lichSu = await api.layLichSuDoc(kh['ma_danh_bo'], limit: 3);
+      if (!mounted || _loadingRequestId != myRequestId) return;
+
+      setState(() {
+        if (lichSu.isEmpty) {
+          _history = [
+            {'code': '--', 'cs': '--', 'tt': '--'},
+            {'code': '--', 'cs': '--', 'tt': '--'},
+            {'code': '--', 'cs': '--', 'tt': '--'},
+          ];
+        } else {
+          _history = lichSu.map<Map<String, dynamic>>((item) {
+            return {
+              'code': item['code']?.toString() ?? '40',
+              'cs': item['chi_so'].toString(),
+              'tt': item['tieu_thu'].toString(),
+            };
+          }).toList();
+
+          while (_history.length < 3) {
+            _history.add({'code': '--', 'cs': '--', 'tt': '--'});
+          }
+        }
+
+        // --- FALLBACK LOGIC CHO CHỈ SỐ CŨ ---
+        // Nếu ChiSoCu đang là 0, thử lấy từ lịch sử gần nhất
+        int currentCsCu = int.tryParse(kh['chi_so_cu'].toString()) ?? 0;
+        if (currentCsCu == 0 && lichSu.isNotEmpty) {
+          // Lấy chỉ số của kỳ mới nhất trong lịch sử làm chỉ số cũ
+          final latestHistory = lichSu.first;
+          final historyCs =
+              int.tryParse(latestHistory['chi_so'].toString()) ?? 0;
+          if (historyCs > 0) {
+            kh['chi_so_cu'] = historyCs; // Cập nhật vào model local (tạm thời)
+            print("🛠️ Auto-fixed ChiSoCu for ${kh['ma_danh_bo']}: $historyCs");
+          }
+        }
+
+        // Tính lại tiêu thụ sau khi (có thể) đã fix ChiSoCu
+        _calculateTieuThu();
+      });
+    } catch (e) {
+      print('Error loading history: $e');
+    }
   }
 
   void _navigatePrevious() {
     if (_currentIndex > 0) {
       _saveCurrentTemp();
-      setState(() {
-        _currentIndex--;
-      });
-      _loadDataForCurrentIndex();
+      int newIndex = _currentIndex - 1;
+      if (_filterShowRead) {
+        while (newIndex >= 0 && _danhSachKH[newIndex]['trang_thai'] == 1) {
+          newIndex--;
+        }
+      }
+      if (newIndex >= 0) {
+        setState(() => _currentIndex = newIndex);
+        _loadDataForCurrentIndex();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Không còn khách hàng chưa đọc phía trước!")));
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Đây là khách hàng đầu tiên!")));
@@ -1268,10 +1404,20 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
   void _navigateNext() {
     if (_currentIndex < _danhSachKH.length - 1) {
       _saveCurrentTemp();
-      setState(() {
-        _currentIndex++;
-      });
-      _loadDataForCurrentIndex();
+      int newIndex = _currentIndex + 1;
+      if (_filterShowRead) {
+        while (newIndex < _danhSachKH.length &&
+            _danhSachKH[newIndex]['trang_thai'] == 1) {
+          newIndex++;
+        }
+      }
+      if (newIndex < _danhSachKH.length) {
+        setState(() => _currentIndex = newIndex);
+        _loadDataForCurrentIndex();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Không còn khách hàng chưa đọc phía sau!")));
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Đây là khách hàng cuối cùng!")));
@@ -1299,7 +1445,8 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
 
     // Gọi API ghi chỉ số (kết hợp cập nhật + lưu lịch sử)
     final maKyDoc = khCurrent['ma_ky_doc'] ?? 0;
-    await api.ghiChiSo(
+
+    final success = await api.ghiChiSo(
       khCurrent['ma_danh_bo'],
       maKyDoc is int ? maKyDoc : int.tryParse(maKyDoc.toString()) ?? 0,
       soMoi,
@@ -1308,6 +1455,15 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     );
 
     if (!mounted) return;
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Lỗi lưu chỉ số! Kiểm tra lại API (Kỳ: $maKyDoc)",
+              style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.red));
+      return;
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text("Đã lưu chỉ số!", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.green));
@@ -1322,7 +1478,7 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     _navigateNext();
   }
 
-  Future<int?> _pickImageFromGallery() async {
+  Future<Map<String, dynamic>?> _pickImageFromGallery() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
@@ -1346,7 +1502,7 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
       String cleaned = _cleanText(rawText);
 
       if (cleaned.isNotEmpty) {
-        return int.tryParse(cleaned);
+        return {'chiSo': int.tryParse(cleaned), 'imagePath': croppedFile.path};
       } else {
         if (!mounted) return null;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1403,6 +1559,8 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
   @override
   Widget build(BuildContext context) {
     final kh = _danhSachKH[_currentIndex];
+    print(
+        "DEBUG GHI NUOC: Index $_currentIndex - KH: ${kh['ma_danh_bo']} - CS Cu: ${kh['chi_so_cu']} - TieuThu: $_tieuThu");
     const blueColor = Color(0xFF2196F3);
 
     return Scaffold(
@@ -1790,9 +1948,8 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
 
                                         if (choice == null) return;
 
-                                        int? result;
+                                        Map<String, dynamic>? result;
                                         if (choice == 'camera') {
-                                          // Mở CameraScreen
                                           result = await Navigator.push(
                                             context,
                                             MaterialPageRoute(
@@ -1800,17 +1957,21 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                                     khachHang: kh)),
                                           );
                                         } else {
-                                          // Chọn ảnh từ Gallery
                                           result =
                                               await _pickImageFromGallery();
                                         }
 
                                         if (result != null) {
                                           setState(() {
-                                            _csMoiController.text =
-                                                result.toString();
-                                            kh['chi_so_moi'] = result;
-                                            kh['trang_thai'] = 1;
+                                            final chiSo = result!['chiSo'];
+                                            if (chiSo != null) {
+                                              _csMoiController.text =
+                                                  chiSo.toString();
+                                              kh['chi_so_moi'] = chiSo;
+                                              kh['trang_thai'] = 1;
+                                            }
+                                            _capturedImagePath =
+                                                result['imagePath'];
                                           });
                                         }
                                       },
@@ -1826,6 +1987,108 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                             color: Colors.black54, size: 28),
                                       ),
                                     ),
+                                    // === KHUNG XEM ẢNH ĐÃ CHỤP ===
+                                    if (_capturedImagePath != null)
+                                      GestureDetector(
+                                        onTap: () {
+                                          // Xem ảnh toàn màn hình
+                                          showDialog(
+                                            context: context,
+                                            builder: (ctx) => Dialog(
+                                              backgroundColor: Colors.black,
+                                              insetPadding:
+                                                  const EdgeInsets.all(10),
+                                              child: Stack(
+                                                children: [
+                                                  Center(
+                                                    child: InteractiveViewer(
+                                                      child: Image.file(
+                                                        File(
+                                                            _capturedImagePath!),
+                                                        fit: BoxFit.contain,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Positioned(
+                                                    top: 8,
+                                                    right: 8,
+                                                    child: IconButton(
+                                                      icon: const Icon(
+                                                          Icons.close,
+                                                          color: Colors.white,
+                                                          size: 30),
+                                                      onPressed: () =>
+                                                          Navigator.pop(ctx),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: Container(
+                                          width: 80,
+                                          height: 80,
+                                          margin:
+                                              const EdgeInsets.only(left: 10),
+                                          child: Stack(
+                                            clipBehavior: Clip.none,
+                                            children: [
+                                              Container(
+                                                width: 80,
+                                                height: 80,
+                                                decoration: BoxDecoration(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  border: Border.all(
+                                                      color: Colors.green,
+                                                      width: 2),
+                                                ),
+                                                child: ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  child: Image.file(
+                                                    File(_capturedImagePath!),
+                                                    fit: BoxFit.cover,
+                                                    width: 80,
+                                                    height: 80,
+                                                  ),
+                                                ),
+                                              ),
+                                              Positioned(
+                                                top: -8,
+                                                right: -8,
+                                                child: GestureDetector(
+                                                  onTap: () {
+                                                    setState(() =>
+                                                        _capturedImagePath =
+                                                            null);
+                                                  },
+                                                  child: Container(
+                                                    width: 26,
+                                                    height: 26,
+                                                    decoration:
+                                                        const BoxDecoration(
+                                                      color: Colors.red,
+                                                      shape: BoxShape.circle,
+                                                      boxShadow: [
+                                                        BoxShadow(
+                                                          color: Colors.black26,
+                                                          blurRadius: 3,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    child: const Icon(
+                                                        Icons.close,
+                                                        size: 16,
+                                                        color: Colors.white),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                   ],
                                 ),
                                 TextField(
