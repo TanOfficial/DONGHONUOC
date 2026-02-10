@@ -1,0 +1,6 @@
+@DONGHONUOC_API_HostAddress = http://localhost:5063
+
+GET {{DONGHONUOC_API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

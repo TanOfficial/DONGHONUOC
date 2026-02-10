@@ -5,12 +5,15 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image/image.dart' as img;
 import 'db_helper.dart';
+import 'api_service.dart';
 import 'logger.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+final api = ApiService();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,14 +53,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (_isLogin) {
-      var user = await DatabaseHelper().dangNhap(u, p);
+      var user = await api.dangNhap(u, p);
       if (user != null) {
         if (!mounted) return;
         Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-                builder: (context) =>
-                    DashboardScreen(fullname: user['fullname'])));
+                builder: (context) => DashboardScreen(
+                    fullname: user['fullname'] ?? user['username'])));
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -69,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SnackBar(content: Text("Vui lòng nhập Họ Tên!")));
         return;
       }
-      bool success = await DatabaseHelper().dangKy(u, p, _nameController.text);
+      bool success = await api.dangKy(u, p, _nameController.text);
       if (!mounted) return;
       if (success) {
         ScaffoldMessenger.of(context)
@@ -281,7 +284,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadStats() async {
-    final total = await DatabaseHelper().demTongKhach();
+    final total = await api.demTongKhach();
     setState(() => _totalCustomers = total);
   }
 
@@ -540,7 +543,7 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
   }
 
   Future<void> _taiDuLieu() async {
-    final data = await DatabaseHelper().layDanhSach();
+    final data = await api.layDanhSach();
     setState(() {
       _danhSachKH = data;
       _filteredList = List.from(data);
@@ -631,7 +634,7 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
     } else if (_filterType == "Bất Thường Tăng") {
       List<Map<String, dynamic>> filtered = [];
       for (var kh in temp) {
-        final batThuong = await DatabaseHelper().tinhBatThuong(kh);
+        final batThuong = await _tinhBatThuongLocal(kh);
         if (batThuong == 'tang') filtered.add(kh);
       }
       temp = filtered;
@@ -688,8 +691,7 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
       List<Map<String, dynamic>> list, int percentage) async {
     List<Map<String, dynamic>> filtered = [];
     for (var kh in list) {
-      final history =
-          await DatabaseHelper().layLichSuDoc(kh['ma_danh_bo'], limit: 1);
+      final history = await api.layLichSuDoc(kh['ma_danh_bo'], limit: 1);
       if (history.isEmpty) continue;
 
       final chiSoCu = (kh['chi_so_cu'] as int?) ?? 0;
@@ -706,6 +708,38 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
       }
     }
     return filtered;
+  }
+
+  /// Tính bất thường tiêu thụ (local, gọi API lấy lịch sử)
+  Future<String?> _tinhBatThuongLocal(Map<String, dynamic> kh) async {
+    try {
+      final chiSoCu = (kh['chi_so_cu'] as int?) ?? 0;
+      final chiSoMoi = (kh['chi_so_moi'] as int?) ?? 0;
+      if (chiSoMoi <= 0 || chiSoMoi <= chiSoCu) return null;
+
+      final tieuThuHienTai = chiSoMoi - chiSoCu;
+      final history = await api.layLichSuDoc(kh['ma_danh_bo'], limit: 3);
+      if (history.isEmpty) return null;
+
+      double tongTieuThu = 0;
+      int count = 0;
+      for (var item in history) {
+        final tt = (item['TieuThu'] ?? item['tieu_thu'] ?? 0);
+        final ttInt = tt is int ? tt : int.tryParse(tt.toString()) ?? 0;
+        if (ttInt > 0) {
+          tongTieuThu += ttInt;
+          count++;
+        }
+      }
+      if (count == 0) return null;
+
+      final trungBinh = tongTieuThu / count;
+      if (tieuThuHienTai > trungBinh * 1.5) return 'tang';
+      if (tieuThuHienTai < trungBinh * 0.5) return 'giam';
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   Future<void> _importData() async {
@@ -744,6 +778,7 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
 
           await DatabaseHelper().xoaToanBoKhachHang();
           final count = await DatabaseHelper().importFromCSV(filePath);
+          // TODO: Chuyển sang API import khi server hỗ trợ
 
           if (!mounted) return;
           Navigator.pop(context);
@@ -762,6 +797,7 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
   Future<void> _exportData() async {
     try {
       final filePath = await DatabaseHelper().exportToCSV();
+      // TODO: Chuyển sang API export khi server hỗ trợ
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('✅ Export thành công!\n$filePath')));
@@ -1181,8 +1217,7 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     if (_currentIndex < 0 || _currentIndex >= _danhSachKH.length) return;
     final kh = _danhSachKH[_currentIndex];
 
-    final lichSu =
-        await DatabaseHelper().layLichSuDoc(kh['ma_danh_bo'], limit: 3);
+    final lichSu = await api.layLichSuDoc(kh['ma_danh_bo'], limit: 3);
 
     setState(() {
       if (lichSu.isEmpty) {
@@ -1261,20 +1296,15 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     }
 
     final khCurrent = _danhSachKH[_currentIndex];
-    final chiSoCu = (khCurrent['chi_so_cu'] as int?) ?? 0;
-    final tieuThu = soMoi > chiSoCu ? soMoi - chiSoCu : 0;
 
-    await DatabaseHelper().capNhatChiSo(khCurrent['ma_danh_bo'], soMoi, "",
-        ghiChu: _ghiChuController.text);
-
-    final now = DateTime.now();
-    await DatabaseHelper().luuLichSu(
+    // Gọi API ghi chỉ số (kết hợp cập nhật + lưu lịch sử)
+    final maKyDoc = khCurrent['ma_ky_doc'] ?? 0;
+    await api.ghiChiSo(
       khCurrent['ma_danh_bo'],
-      now.month,
-      now.year,
+      maKyDoc is int ? maKyDoc : int.tryParse(maKyDoc.toString()) ?? 0,
       soMoi,
-      tieuThu,
       code: _selectedCode,
+      ghiChu: _ghiChuController.text,
     );
 
     if (!mounted) return;
@@ -1682,9 +1712,16 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                     ],
                                     onChanged: (v) {
                                       setState(() => _selectedCode = v!);
-                                      DatabaseHelper().capNhatCode(
-                                          _danhSachKH[_currentIndex]
-                                              ['ma_danh_bo'],
+                                      final currentKh =
+                                          _danhSachKH[_currentIndex];
+                                      final kyDoc = currentKh['ma_ky_doc'] ?? 0;
+                                      api.capNhatCode(
+                                          currentKh['ma_danh_bo'],
+                                          kyDoc is int
+                                              ? kyDoc
+                                              : int.tryParse(
+                                                      kyDoc.toString()) ??
+                                                  0,
                                           v!);
                                     },
                                   ),
@@ -1829,6 +1866,7 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                     _buildBottomIcon(Icons.share, "PC", () async {
                       try {
                         final filePath = await DatabaseHelper().exportToCSV();
+                        // TODO: Chuyển sang API export khi server hỗ trợ
                         await Share.shareXFiles([XFile(filePath)],
                             text: 'Dữ liệu đọc số đồng hồ nước');
                         if (!mounted) return;
