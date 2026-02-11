@@ -139,7 +139,7 @@ class DatabaseHelper {
   }
 
   Future<void> capNhatChiSo(String maDB, int chiSoMoi, String hinhAnh,
-      {String ghiChu = ''}) async {
+      {String ghiChu = '', String code = '40'}) async {
     final db = await database;
     await db.update(
       'khach_hang',
@@ -148,6 +148,7 @@ class DatabaseHelper {
         'trang_thai': 1,
         'hinh_anh': hinhAnh,
         'ghi_chu': ghiChu,
+        'code': code,
       },
       where: 'ma_danh_bo = ?',
       whereArgs: [maDB],

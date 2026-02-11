@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 /// Service kết nối Flutter App với ASP.NET Core API
@@ -138,11 +139,22 @@ class ApiService {
     }
   }
 
-  /// Ghi chỉ số nước
+  /// Ghi chỉ số nước (Upload ảnh dạng Base64)
   Future<bool> ghiChiSo(String maDanhBo, int maKyDoc, int chiSoMoi,
-      {String code = '40', String ghiChu = ''}) async {
+      {String code = '40', String ghiChu = '', String? imagePath}) async {
     try {
       final url = '$_baseUrl/docchiso/ghi';
+
+      String? base64Image;
+      if (imagePath != null && imagePath.isNotEmpty) {
+        final file = File(imagePath);
+        if (await file.exists()) {
+          final bytes = await file.readAsBytes();
+          base64Image = base64Encode(bytes);
+          print('📸 Đã chuyển ảnh sang Base64 (${base64Image.length} chars)');
+        }
+      }
+
       final body = jsonEncode({
         'MaDanhBo': maDanhBo,
         'MaKyDoc': maKyDoc,
@@ -150,10 +162,12 @@ class ApiService {
         'MaCode': code,
         'GhiChu': ghiChu,
         'NguoiDoc': _currentUsername,
+        // Gửi ảnh dạng Base64 nếu có
+        if (base64Image != null) 'HinhAnh': base64Image,
       });
 
       print('🌐 POST $url');
-      print('📦 Body: $body');
+      // print('📦 Body: $body'); // Comment out to avoid spamming console with huge string
 
       final response = await http.post(
         Uri.parse(url),

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -12,6 +13,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'ui_helper.dart';
 
 final api = ApiService();
 
@@ -47,8 +49,8 @@ class _LoginScreenState extends State<LoginScreen> {
     String p = _passController.text;
 
     if (u.isEmpty || p.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Vui lòng nhập đủ thông tin!")));
+      UIHelper.showCustomSnackBar(context,
+          message: "Vui lòng nhập đầy đủ thông tin!", isError: true);
       return;
     }
 
@@ -63,24 +65,25 @@ class _LoginScreenState extends State<LoginScreen> {
                     fullname: user['fullname'] ?? user['username'])));
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Sai tài khoản hoặc mật khẩu!")));
+        UIHelper.showCustomSnackBar(context,
+            message: "Sai tài khoản hoặc mật khẩu!", isError: true);
       }
     } else {
       if (_nameController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Vui lòng nhập Họ Tên!")));
+        UIHelper.showCustomSnackBar(context,
+            message: "Vui lòng nhập Họ và Tên!", isError: true);
         return;
       }
       bool success = await api.dangKy(u, p, _nameController.text);
       if (!mounted) return;
       if (success) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text("Đăng ký thành công!")));
+        UIHelper.showCustomSnackBar(context,
+            message: "Đăng ký thành công! Vui lòng đăng nhập.",
+            isSuccess: true);
         setState(() => _isLogin = true);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Tên đăng nhập đã tồn tại!")));
+        UIHelper.showCustomSnackBar(context,
+            message: "Tên đăng nhập đã tồn tại!", isError: true);
       }
     }
   }
@@ -300,26 +303,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               // Hiển thị dialog xác nhận đăng xuất
-              final confirm = await showDialog<bool>(
+              final confirm = await UIHelper.showCustomDialog<bool>(
                 context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Đăng xuất'),
-                  content: const Text('Bạn có chắc chắn muốn đăng xuất?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Hủy'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2196F3),
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Đăng xuất'),
-                    ),
-                  ],
-                ),
+                title: 'Đăng xuất',
+                content: 'Bạn có chắc chắn muốn đăng xuất?',
+                icon: Icons.logout,
+                iconColor: Colors.orange,
+                confirmText: 'Đăng xuất',
+                cancelText: 'Hủy',
               );
 
               // Nếu user xác nhận đăng xuất
@@ -327,13 +318,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 if (!context.mounted) return;
 
                 // Hiển thị thông báo đăng xuất thành công
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Đã đăng xuất thành công!'),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+                UIHelper.showCustomSnackBar(context,
+                    message: 'Đã đăng xuất thành công!', isSuccess: true);
 
                 // Chờ 1 giây để user thấy notification
                 await Future.delayed(const Duration(milliseconds: 800));
@@ -433,9 +419,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     "Quản Lý",
                     'assets/icon_quanly.png',
                     Colors.orange[700]!,
-                    () => ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text("Chức năng đang được phát triển"))),
+                    () => UIHelper.showCustomSnackBar(context,
+                        message: "Chức năng đang được phát triển",
+                        isError: false),
                   ),
                 ],
               ),
@@ -545,7 +531,15 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
 
   Future<void> _taiDuLieu() async {
     try {
-      // 1. Lấy danh sách kỳ đọc
+      // 0. Chuẩn bị dữ liệu local để merge (giữ hình ảnh/trạng thái offline)
+      final localData = await DatabaseHelper().layDanhSach();
+      final Map<String, Map<String, dynamic>> localMap = {
+        for (var item in localData) item['ma_danh_bo'].toString(): item
+      };
+
+      List<Map<String, dynamic>> finalData = [];
+
+      // 1. Lấy danh sách kỳ đọc từ API
       final kyDocList = await api.layDanhSachKyDoc();
 
       if (kyDocList.isNotEmpty) {
@@ -559,41 +553,73 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
 
           if (data.isNotEmpty) {
             print('✅ Found data in KyDoc: $maKy (${data.length} records)');
-            setState(() {
-              _danhSachKH = data;
-              _filteredList = List.from(data);
-            });
-            return;
+            finalData = data;
+            break; // Found data, stop searching
           }
         }
       }
 
-      // 3. Fallback: Nếu không tìm thấy kỳ nào có dữ liệu, lấy danh sách khách hàng
-      print('⚠️ No data found in any KyDoc, loading from KhachHang table');
-      final data = await api.layDanhSach();
+      // 2. Fallback: Nếu API không có dữ liệu đọc số, lấy danh sách khách hàng gốc
+      if (finalData.isEmpty) {
+        print('⚠️ No data found in any KyDoc, loading from KhachHang table');
+        finalData = await api.layDanhSach();
+        // Inject MaKyDoc từ kỳ mới nhất
+        if (kyDocList.isNotEmpty) {
+          final latestMaKy = kyDocList.first['MaKyDoc'] as int?;
+          if (latestMaKy != null) {
+            for (var item in finalData) {
+              item['ma_ky_doc'] = latestMaKy;
+            }
+          }
+        }
+      }
 
-      // Inject MaKyDoc từ kỳ mới nhất để có thể lưu dữ liệu
-      if (kyDocList.isNotEmpty) {
-        final latestMaKy = kyDocList.first['MaKyDoc'] as int?;
-        if (latestMaKy != null) {
-          print(
-              '💉 Injecting MaKyDoc=$latestMaKy into ${data.length} fallback items');
-          for (var item in data) {
-            item['ma_ky_doc'] = latestMaKy;
+      // 3. MERGE LOCAL DATA (Quan trọng: Khôi phục hình ảnh/trạng thái đã lưu offline)
+      if (finalData.isNotEmpty) {
+        print(
+            '🔄 Merging local data (${localMap.length} records) into API result...');
+        for (var item in finalData) {
+          // Ensure strict string comparison and trim
+          final mdb = (item['ma_danh_bo']?.toString() ?? '').trim();
+
+          if (localMap.containsKey(mdb)) {
+            final local = localMap[mdb]!;
+
+            // DEBUG: Check specific customer
+            if (item['hinh_anh'] == null && local['hinh_anh'] != null) {
+              print(
+                  '📸 Restoring image for $mdb from local DB: ${local['hinh_anh']}');
+            }
+
+            // Nếu local có hình ảnh, ghi đè vào data hiển thị
+            if (local['hinh_anh'] != null &&
+                local['hinh_anh'].toString().isNotEmpty) {
+              item['hinh_anh'] = local['hinh_anh'];
+              item['imagePath'] =
+                  local['hinh_anh']; // Đảm bảo tương thích cả 2 key
+
+              // Nếu trạng thái local là đã đọc (1), cập nhật luôn
+              if (local['trang_thai'] == 1) {
+                item['trang_thai'] = 1;
+                item['chi_so_moi'] = local['chi_so_moi'];
+                item['code'] = local['code'];
+              }
+            }
           }
         }
       }
 
       setState(() {
-        _danhSachKH = data;
-        _filteredList = List.from(data);
+        _danhSachKH = finalData;
+        _filteredList = List.from(finalData);
       });
     } catch (e) {
       print('❌ Lỗi tải dữ liệu: $e');
-      final data = await api.layDanhSach();
+      // Fallback hoàn toàn về local nếu lỗi mạng
+      final localData = await DatabaseHelper().layDanhSach();
       setState(() {
-        _danhSachKH = data;
-        _filteredList = List.from(data);
+        _danhSachKH = localData;
+        _filteredList = List.from(localData);
       });
     }
   }
@@ -1025,12 +1051,16 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void initState() {
     super.initState();
-    _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    if (Platform.isAndroid || Platform.isIOS) {
+      _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    }
     _khoiTaoCamera();
   }
 
   Future<void> _khoiTaoCamera() async {
-    await Permission.camera.request();
+    if (Platform.isAndroid || Platform.isIOS) {
+      await Permission.camera.request();
+    }
     final cameras = await availableCameras();
     if (cameras.isNotEmpty) {
       _controller = CameraController(cameras.first, ResolutionPreset.high,
@@ -1043,7 +1073,9 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void dispose() {
     _controller?.dispose();
-    _textRecognizer.close();
+    if (Platform.isAndroid || Platform.isIOS) {
+      _textRecognizer.close();
+    }
     super.dispose();
   }
 
@@ -1056,10 +1088,22 @@ class _CameraScreenState extends State<CameraScreen> {
 
     try {
       final image = await _controller!.takePicture();
+      // Skip cropping on Windows for now or implement a different cropper if needed
+      // But keeping it consistent.
       final croppedFile = await _cropImage(image.path);
 
       if (croppedFile == null) {
         setState(() => _isBusy = false);
+        return;
+      }
+
+      // Skip OCR on Windows
+      if (!Platform.isAndroid && !Platform.isIOS) {
+        if (!mounted) return;
+        Navigator.pop(context, {
+          'chiSo': null,
+          'imagePath': croppedFile.path,
+        });
         return;
       }
 
@@ -1078,13 +1122,12 @@ class _CameraScreenState extends State<CameraScreen> {
           'imagePath': croppedFile.path,
         });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Không nhận diện được số!")));
+        UIHelper.showCustomSnackBar(context,
+            message: "Không nhận diện được số!", isError: true);
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Lỗi: $e")));
+      UIHelper.showCustomSnackBar(context, message: "Lỗi: $e", isError: true);
     } finally {
       setState(() => _isBusy = false);
     }
@@ -1154,13 +1197,12 @@ class _CameraScreenState extends State<CameraScreen> {
       if (cleaned.isNotEmpty) {
         Navigator.pop(context, int.tryParse(cleaned));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Không nhận diện được số!")));
+        UIHelper.showCustomSnackBar(context,
+            message: "Không nhận diện được số!", isError: true);
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Lỗi: $e")));
+      UIHelper.showCustomSnackBar(context, message: "Lỗi: $e", isError: true);
     } finally {
       setState(() => _isBusy = false);
     }
@@ -1306,7 +1348,13 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
 
     // Reset state first to avoid stale data
     setState(() {
-      _capturedImagePath = null;
+      _capturedImagePath =
+          kh['imagePath'] ?? kh['hinh_anh']; // Load image (check both keys)
+
+      // Ensure empty string is treated as null
+      if (_capturedImagePath != null && _capturedImagePath!.isEmpty) {
+        _capturedImagePath = null;
+      }
       _history = []; // Clear history temporarily while loading
 
       // Load saved values or defaults
@@ -1392,12 +1440,13 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
         setState(() => _currentIndex = newIndex);
         _loadDataForCurrentIndex();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Không còn khách hàng chưa đọc phía trước!")));
+        UIHelper.showCustomSnackBar(context,
+            message: "Không còn khách hàng chưa đọc phía trước!",
+            isError: false);
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Đây là khách hàng đầu tiên!")));
+      UIHelper.showCustomSnackBar(context,
+          message: "Đây là khách hàng đầu tiên!", isError: false);
     }
   }
 
@@ -1415,12 +1464,12 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
         setState(() => _currentIndex = newIndex);
         _loadDataForCurrentIndex();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Không còn khách hàng chưa đọc phía sau!")));
+        UIHelper.showCustomSnackBar(context,
+            message: "Không còn khách hàng chưa đọc phía sau!", isError: false);
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Đây là khách hàng cuối cùng!")));
+      UIHelper.showCustomSnackBar(context,
+          message: "Đây là khách hàng cuối cùng!", isError: false);
     }
   }
 
@@ -1430,14 +1479,16 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
       _danhSachKH[_currentIndex]['chi_so_moi'] = soMoi;
       _danhSachKH[_currentIndex]['ghi_chu'] = _ghiChuController.text;
       _danhSachKH[_currentIndex]['code'] = _selectedCode;
+      // Mark as read locally so filter works even if not saved to API yet
+      _danhSachKH[_currentIndex]['trang_thai'] = 1;
     }
   }
 
   Future<void> _luuChiSo() async {
     final soMoi = int.tryParse(_csMoiController.text);
     if (soMoi == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Chỉ số không hợp lệ")));
+      UIHelper.showCustomSnackBar(context,
+          message: "Chỉ số không hợp lệ", isError: true);
       return;
     }
 
@@ -1452,30 +1503,42 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
       soMoi,
       code: _selectedCode,
       ghiChu: _ghiChuController.text,
+      imagePath: _capturedImagePath, // Pass image path to API for upload
     );
 
     if (!mounted) return;
 
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("Lỗi lưu chỉ số! Kiểm tra lại API (Kỳ: $maKyDoc)",
-              style: TextStyle(color: Colors.white)),
-          backgroundColor: Colors.red));
-      return;
+      UIHelper.showCustomSnackBar(context,
+          message: "Lỗi lưu chỉ số (Server)! Nhưng sẽ lưu Offline.",
+          isError: true);
+      // Continue to save offline even if server fails
+    } else {
+      UIHelper.showCustomSnackBar(context,
+          message: "Đã lưu chỉ số lên Server!", isSuccess: true);
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text("Đã lưu chỉ số!", style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.green));
+    // Always save to local DB (including image path)
+    await DatabaseHelper().capNhatChiSo(
+      khCurrent['ma_danh_bo'],
+      soMoi,
+      _capturedImagePath ?? '',
+      ghiChu: _ghiChuController.text,
+      code: _selectedCode,
+    );
 
     setState(() {
       khCurrent['chi_so_moi'] = soMoi;
       khCurrent['trang_thai'] = 1;
       khCurrent['ghi_chu'] = _ghiChuController.text;
       khCurrent['code'] = _selectedCode;
+      // Persist image path locally so it doesn't disappear
+      if (_capturedImagePath != null) {
+        khCurrent['imagePath'] = _capturedImagePath;
+      }
     });
 
-    _navigateNext();
+    // _navigateNext(); // REMOVED as per user request
   }
 
   Future<Map<String, dynamic>?> _pickImageFromGallery() async {
@@ -1485,8 +1548,14 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     if (image == null) return null;
 
     if (!mounted) return null;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text("Đang xử lý ảnh...")));
+    UIHelper.showCustomSnackBar(context,
+        message: "Đang xử lý ảnh...", isSuccess: true);
+
+    // Skip OCR on Windows
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      // On Windows, just return the image path without OCR
+      return {'chiSo': null, 'imagePath': image.path};
+    }
 
     final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
@@ -1505,14 +1574,13 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
         return {'chiSo': int.tryParse(cleaned), 'imagePath': croppedFile.path};
       } else {
         if (!mounted) return null;
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Không nhận diện được số!")));
+        UIHelper.showCustomSnackBar(context,
+            message: "Không nhận diện được số!", isError: true);
         return null;
       }
     } catch (e) {
       if (!mounted) return null;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Lỗi: $e")));
+      UIHelper.showCustomSnackBar(context, message: "Lỗi: $e", isError: true);
       return null;
     } finally {
       textRecognizer.close();
@@ -1740,19 +1808,56 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text('Ghi Chú: ',
-                              style: TextStyle(
-                                  color: Colors.grey[800],
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600)),
-                          Expanded(
-                            child: Text(kh['ghi_chu'] ?? 'kè 68 dinh liet',
-                                style: const TextStyle(
-                                    fontSize: 14, fontStyle: FontStyle.italic)),
-                          ),
-                        ],
+                      // Ghi Chú - Improved UI
+                      Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(
+                              0xFFFFF3E0), // Light orange background
+                          borderRadius: BorderRadius.circular(8),
+                          border:
+                              Border.all(color: Colors.orange.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.note_alt_outlined,
+                                size: 20, color: Colors.orange),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Ghi Chú:",
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.orange,
+                                          fontSize: 13)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    (kh['ghi_chu'] != null &&
+                                            kh['ghi_chu']
+                                                .toString()
+                                                .trim()
+                                                .isNotEmpty)
+                                        ? kh['ghi_chu'].toString()
+                                        : "Chưa có ghi chú",
+                                    style: TextStyle(
+                                        fontStyle: FontStyle.italic,
+                                        color: (kh['ghi_chu'] != null &&
+                                                kh['ghi_chu']
+                                                    .toString()
+                                                    .trim()
+                                                    .isNotEmpty)
+                                            ? Colors.black87
+                                            : Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const Divider(height: 24),
                       // Tình Trạng
@@ -1916,34 +2021,25 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                     const Spacer(),
                                     InkWell(
                                       onTap: () async {
-                                        // Dialog chọn Camera hoặc Gallery
-                                        final choice = await showDialog<String>(
+                                        // Dialog chọn Camera hoặc Gallery using UIHelper
+                                        final choice = await UIHelper
+                                            .showOptionDialog<String>(
                                           context: context,
-                                          builder: (context) => AlertDialog(
-                                            title: const Text('Chọn nguồn ảnh'),
-                                            content: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                ListTile(
-                                                  leading: const Icon(
-                                                      Icons.camera_alt,
-                                                      color: Color(0xFF2196F3)),
-                                                  title: const Text('Chụp ảnh'),
-                                                  onTap: () => Navigator.pop(
-                                                      context, 'camera'),
-                                                ),
-                                                ListTile(
-                                                  leading: const Icon(
-                                                      Icons.photo_library,
-                                                      color: Color(0xFF2196F3)),
-                                                  title: const Text(
-                                                      'Chọn từ thư viện'),
-                                                  onTap: () => Navigator.pop(
-                                                      context, 'gallery'),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
+                                          title: 'Chọn nguồn ảnh',
+                                          options: [
+                                            {
+                                              'label': 'Chụp ảnh',
+                                              'icon': Icons.camera_alt,
+                                              'value': 'camera',
+                                              'color': Colors.blue
+                                            },
+                                            {
+                                              'label': 'Chọn từ thư viện',
+                                              'icon': Icons.photo_library,
+                                              'value': 'gallery',
+                                              'color': Colors.green
+                                            },
+                                          ],
                                         );
 
                                         if (choice == null) return;
@@ -1967,11 +2063,17 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                             if (chiSo != null) {
                                               _csMoiController.text =
                                                   chiSo.toString();
-                                              kh['chi_so_moi'] = chiSo;
-                                              kh['trang_thai'] = 1;
+                                              // kh['chi_so_moi'] = chiSo; // Don't auto-save to model yet
+                                              // kh['trang_thai'] = 1;
                                             }
-                                            _capturedImagePath =
-                                                result['imagePath'];
+                                            // Always update image path if result is returned
+                                            if (result['imagePath'] != null) {
+                                              _capturedImagePath =
+                                                  result['imagePath'];
+                                              // Save immediately to model so it persists if setState is called elsewhere
+                                              kh['imagePath'] =
+                                                  result['imagePath'];
+                                            }
                                           });
                                         }
                                       },
@@ -2002,11 +2104,9 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                                 children: [
                                                   Center(
                                                     child: InteractiveViewer(
-                                                      child: Image.file(
-                                                        File(
-                                                            _capturedImagePath!),
-                                                        fit: BoxFit.contain,
-                                                      ),
+                                                      child: _buildImageWidget(
+                                                          _capturedImagePath!,
+                                                          BoxFit.contain),
                                                     ),
                                                   ),
                                                   Positioned(
@@ -2047,12 +2147,9 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                                 child: ClipRRect(
                                                   borderRadius:
                                                       BorderRadius.circular(8),
-                                                  child: Image.file(
-                                                    File(_capturedImagePath!),
-                                                    fit: BoxFit.cover,
-                                                    width: 80,
-                                                    height: 80,
-                                                  ),
+                                                  child: _buildImageWidget(
+                                                      _capturedImagePath!,
+                                                      BoxFit.cover),
                                                 ),
                                               ),
                                               Positioned(
@@ -2133,47 +2230,31 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                         await Share.shareXFiles([XFile(filePath)],
                             text: 'Dữ liệu đọc số đồng hồ nước');
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text("✅ Đã chia sẻ dữ liệu!"),
-                                backgroundColor: Colors.green));
+                        UIHelper.showCustomSnackBar(context,
+                            message: "✅ Đã chia sẻ dữ liệu!", isSuccess: true);
                       } catch (e) {
                         await AppLogger()
                             .error('Lỗi export/share: $e', context: 'EXPORT');
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(SnackBar(content: Text("❌ Lỗi: $e")));
+                        UIHelper.showCustomSnackBar(context,
+                            message: "❌ Lỗi: $e", isError: true);
                       }
                     }, color: Colors.teal),
-                    _buildBottomIcon(Icons.edit_note, "Ghi Chú", () {
-                      _ghiChuController.text = kh['ghi_chu'] ?? '';
-                      showDialog(
+                    _buildBottomIcon(Icons.edit_note, "Ghi Chú", () async {
+                      final note = await UIHelper.showInputDialog(
                         context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text("Ghi Chú"),
-                          content: TextField(
-                            controller: _ghiChuController,
-                            decoration: const InputDecoration(
-                                hintText: "Nhập ghi chú...",
-                                border: OutlineInputBorder()),
-                            maxLines: 3,
-                          ),
-                          actions: [
-                            TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text("Đóng")),
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  kh['ghi_chu'] = _ghiChuController.text;
-                                });
-                                Navigator.pop(context);
-                              },
-                              child: const Text("Lưu"),
-                            )
-                          ],
-                        ),
+                        title: "Ghi Chú KH",
+                        initialValue: kh['ghi_chu'] ?? '',
+                        hintText: "Nhập ghi chú mới...",
+                        confirmText: "Lưu",
+                        cancelText: "Hủy",
                       );
+                      if (note != null) {
+                        setState(() {
+                          kh['ghi_chu'] = note;
+                          _ghiChuController.text = note;
+                        });
+                      }
                     }, color: Colors.amber[800]),
                     _buildBottomIcon(Icons.print, "In", () async {
                       try {
@@ -2190,16 +2271,14 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                         await Share.share(receipt);
 
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text("✅ Đã tạo hóa đơn!"),
-                                backgroundColor: Colors.green));
+                        UIHelper.showCustomSnackBar(context,
+                            message: "✅ Đã tạo hóa đơn!", isSuccess: true);
                       } catch (e) {
                         await AppLogger()
                             .error('Lỗi tạo hóa đơn: $e', context: 'PRINT');
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(SnackBar(content: Text("❌ Lỗi: $e")));
+                        UIHelper.showCustomSnackBar(context,
+                            message: "❌ Lỗi: $e", isError: true);
                       }
                     }, color: Colors.purple),
                     _buildBottomIcon(Icons.save, "Lưu", _luuChiSo,
@@ -2247,6 +2326,42 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildImageWidget(String pathOrBase64, BoxFit fit) {
+    // 1. Check if it's a valid file path
+    final file = File(pathOrBase64);
+    if (file.existsSync()) {
+      return Image.file(
+        file,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) {
+          return const Center(
+              child: Icon(Icons.broken_image, color: Colors.grey));
+        },
+      );
+    }
+
+    // 2. Try Base64
+    try {
+      // Remove any potential header like "data:image/jpeg;base64," if present
+      String cleanBase64 = pathOrBase64;
+      if (cleanBase64.contains(',')) {
+        cleanBase64 = cleanBase64.split(',').last;
+      }
+
+      final bytes = base64Decode(cleanBase64);
+      return Image.memory(
+        bytes,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) {
+          return const Center(
+              child: Icon(Icons.broken_image, color: Colors.grey));
+        },
+      );
+    } catch (e) {
+      return const Center(child: Icon(Icons.error, color: Colors.red));
+    }
   }
 
   Widget _buildCell(String text,
