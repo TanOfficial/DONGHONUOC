@@ -63,8 +63,10 @@ class _LoginScreenState extends State<LoginScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('username', user['username']);
         await prefs.setString('fullname', user['fullname']);
-        if (user['avatar'] != null) {
+        if (user['avatar'] != null && user['avatar'].toString().isNotEmpty) {
           await prefs.setString('avatar_data', user['avatar']);
+        } else {
+          await prefs.remove('avatar_data');
         }
 
         UIHelper.showCustomSnackBar(context,
@@ -396,6 +398,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (confirm == true) {
                 if (!context.mounted) return;
 
+                // Clear session data
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.remove('avatar_data');
+                await prefs.remove('username');
+                await prefs.remove('fullname');
+
+                if (!context.mounted) return;
+
                 // Hiển thị thông báo đăng xuất thành công
                 UIHelper.showCustomSnackBar(context,
                     message: 'Đã đăng xuất thành công!', isSuccess: true);
@@ -404,8 +414,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 await Future.delayed(const Duration(milliseconds: 800));
 
                 if (!context.mounted) return;
-
-                // Navigate về màn hình đăng nhập
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (c) => const LoginScreen()),
@@ -1491,7 +1499,6 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
   final TextEditingController _ghiChuController = TextEditingController();
   int _tieuThu = 0;
   String _selectedCode = '40';
-  bool _filterShowRead = false;
   String? _capturedImagePath; // Đường dẫn ảnh đồng hồ đã chụp
 
   @override
@@ -1644,11 +1651,6 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     if (_currentIndex > 0) {
       _saveCurrentTemp();
       int newIndex = _currentIndex - 1;
-      if (_filterShowRead) {
-        while (newIndex >= 0 && _danhSachKH[newIndex]['trang_thai'] == 1) {
-          newIndex--;
-        }
-      }
       if (newIndex >= 0) {
         setState(() => _currentIndex = newIndex);
         _loadDataForCurrentIndex();
@@ -1667,12 +1669,6 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     if (_currentIndex < _danhSachKH.length - 1) {
       _saveCurrentTemp();
       int newIndex = _currentIndex + 1;
-      if (_filterShowRead) {
-        while (newIndex < _danhSachKH.length &&
-            _danhSachKH[newIndex]['trang_thai'] == 1) {
-          newIndex++;
-        }
-      }
       if (newIndex < _danhSachKH.length) {
         setState(() => _currentIndex = newIndex);
         _loadDataForCurrentIndex();
@@ -1778,6 +1774,42 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     });
 
     // _navigateNext(); // REMOVED as per user request
+  }
+
+  Future<void> _unmarkStatus() async {
+    final kh = _danhSachKH[_currentIndex];
+    final maKyDoc = kh['ma_ky_doc'] is int
+        ? kh['ma_ky_doc']
+        : int.tryParse(kh['ma_ky_doc'].toString()) ?? 0;
+
+    final confirm = await UIHelper.showCustomDialog(
+      context: context,
+      title: 'Xác nhận',
+      content: 'Bạn có muốn hủy trạng thái ĐÃ ĐỌC của khách hàng này?',
+      confirmText: 'Đồng ý',
+      cancelText: 'Bỏ qua',
+      icon: Icons.help_outline,
+      iconColor: Colors.orange,
+    );
+
+    if (confirm != true) return;
+
+    final success = await api.huyDocSo(kh['ma_danh_bo'], maKyDoc);
+    if (success) {
+      final mdb = kh['ma_danh_bo'].toString();
+      await DatabaseHelper().resetTrangThaiLocal(mdb);
+
+      setState(() {
+        kh['trang_thai'] = 0;
+        kh['chi_so_moi'] = kh['chi_so_cu'];
+        kh['tieu_thu'] = 0;
+      });
+      UIHelper.showCustomSnackBar(context,
+          message: "Đã đặt lại trạng thái!", isSuccess: true);
+    } else {
+      UIHelper.showCustomSnackBar(context,
+          message: "Lỗi hủy đọc số!", isError: true);
+    }
   }
 
   Future<Map<String, dynamic>?> _pickImageFromGallery() async {
@@ -1934,17 +1966,19 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                             child: Row(
                               children: [
                                 Checkbox(
-                                  value: _filterShowRead,
+                                  value: kh['trang_thai'] == 1,
                                   onChanged: (value) {
-                                    setState(() {
-                                      _filterShowRead = value ?? false;
-                                    });
+                                    if (value == true) {
+                                      _luuChiSo(useOldIndex: true);
+                                    } else {
+                                      _unmarkStatus();
+                                    }
                                   },
                                   materialTapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
                                   visualDensity: VisualDensity.compact,
                                 ),
-                                const Text('Lọc Đã Đọc',
+                                const Text('Đã đọc',
                                     style: TextStyle(fontSize: 12)),
                               ],
                             ),
@@ -2561,9 +2595,6 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                             message: "❌ Lỗi: $e", isError: true);
                       }
                     }, color: Colors.purple),
-                    _buildBottomIcon(Icons.check_circle, "Đã đọc",
-                        () => _luuChiSo(useOldIndex: true),
-                        color: Colors.green),
                     _buildBottomIcon(Icons.save, "Lưu", _luuChiSo,
                         color: Colors.blue[800]),
                   ],
