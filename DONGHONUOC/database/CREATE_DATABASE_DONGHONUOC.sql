@@ -331,6 +331,7 @@ CREATE TABLE NguoiDung (
     TrangThai       BIT             DEFAULT 1,           -- 1=Hoạt động, 0=Khóa
     NgayTao         DATETIME        DEFAULT GETDATE(),
     LanDangNhapCuoi DATETIME        NULL,
+    Avatar          NVARCHAR(MAX)   NULL,                -- Dữ liệu ảnh đại diện (Base64)
 
     CONSTRAINT FK_ND_KhuVuc FOREIGN KEY (MaKhuVuc) REFERENCES DM_KhuVuc(MaKhuVuc)
 );
