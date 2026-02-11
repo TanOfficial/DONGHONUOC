@@ -58,6 +58,19 @@ class _LoginScreenState extends State<LoginScreen> {
       var user = await api.dangNhap(u, p);
       if (user != null) {
         if (!mounted) return;
+
+        // Save user info
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('username', user['username']);
+        await prefs.setString('fullname', user['fullname']);
+        if (user['avatar'] != null) {
+          await prefs.setString('avatar_data', user['avatar']);
+        }
+
+        UIHelper.showCustomSnackBar(context,
+            message: "Đăng nhập thành công!", isSuccess: true);
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (!mounted) return;
         Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -235,15 +248,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadAvatar() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _avatarPath = prefs.getString('avatar_path');
-    });
-  }
-
-  Future<void> _saveAvatar(String path) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('avatar_path', path);
-    setState(() {
-      _avatarPath = path;
+      _avatarPath = prefs.getString('avatar_data');
     });
   }
 
@@ -281,8 +286,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
 
       if (image != null) {
-        await _saveAvatar(image.path);
+        // 1. Convert to Base64
+        final bytes = await File(image.path).readAsBytes();
+        final base64Image = base64Encode(bytes);
+
+        // 2. Upload API
+        final username =
+            (await SharedPreferences.getInstance()).getString('username') ?? '';
+
+        UIHelper.showCustomSnackBar(context,
+            message: "Đang cập nhật avatar...", isSuccess: true);
+
+        final success = await api.updateAvatar(username, base64Image);
+
+        if (success) {
+          // 3. Save to Prefs
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('avatar_data', base64Image);
+
+          setState(() {
+            _avatarPath = base64Image;
+          });
+
+          if (mounted) {
+            UIHelper.showCustomSnackBar(context,
+                message: "Cập nhật avatar thành công!", isSuccess: true);
+          }
+        } else {
+          if (mounted) {
+            UIHelper.showCustomSnackBar(context,
+                message: "Lỗi cập nhật avatar!", isError: true);
+          }
+        }
       }
+    }
+  }
+
+  Widget _buildAvatarWidget(String? pathOrBase64) {
+    if (pathOrBase64 == null || pathOrBase64.isEmpty) {
+      return const Icon(Icons.person, size: 60, color: Colors.white);
+    }
+
+    // 1. Check if valid file path
+    final file = File(pathOrBase64);
+    if (file.existsSync()) {
+      return ClipOval(
+        child: Image.file(
+          file,
+          fit: BoxFit.cover,
+          width: 120,
+          height: 120,
+          errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.person, size: 60, color: Colors.white),
+        ),
+      );
+    }
+
+    // 2. Try Base64
+    try {
+      String cleanBase64 = pathOrBase64;
+      if (cleanBase64.contains(',')) {
+        cleanBase64 = cleanBase64.split(',').last;
+      }
+      final bytes = base64Decode(cleanBase64);
+      return ClipOval(
+        child: Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          width: 120,
+          height: 120,
+          errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.person, size: 60, color: Colors.white),
+        ),
+      );
+    } catch (e) {
+      return const Icon(Icons.person, size: 60, color: Colors.white);
     }
   }
 
@@ -310,6 +388,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.logout,
                 iconColor: Colors.orange,
                 confirmText: 'Đăng xuất',
+                onConfirm: () => Navigator.pop(context, true),
                 cancelText: 'Hủy',
               );
 
@@ -367,16 +446,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: const Color(0xFF2196F3),
                         shape: BoxShape.circle,
                       ),
-                      child:
-                          _avatarPath != null && File(_avatarPath!).existsSync()
-                              ? ClipOval(
-                                  child: Image.file(
-                                    File(_avatarPath!),
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              : const Icon(Icons.water_drop,
-                                  size: 60, color: Colors.white),
+                      child: _buildAvatarWidget(_avatarPath),
                     ),
                     Positioned(
                       bottom: 0,
@@ -493,11 +563,12 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
 
   String _filterType = "Tất cả";
   String _sortType = "MLT";
+  int _filterStatus = 0; // 0: Tất cả, 1: Chưa Đọc, 2: Đã Đọc
 
   final List<String> _filters = [
     "Tất cả",
-    "Chưa Đọc",
-    "Đã Đọc",
+    // "Chưa Đọc", // Removed
+    // "Đã Đọc",   // Removed
     "F",
     "6",
     "Bất Thường Tăng",
@@ -611,8 +682,8 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
 
       setState(() {
         _danhSachKH = finalData;
-        _filteredList = List.from(finalData);
       });
+      _applyFilter();
     } catch (e) {
       print('❌ Lỗi tải dữ liệu: $e');
       // Fallback hoàn toàn về local nếu lỗi mạng
@@ -696,12 +767,15 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
       }).toList();
     }
 
-    // 2. Filter
-    if (_filterType == "Chưa Đọc") {
+    // 2. Filter by Status (Toggle)
+    if (_filterStatus == 1) {
       temp = temp.where((kh) => kh['trang_thai'] == 0).toList();
-    } else if (_filterType == "Đã Đọc") {
+    } else if (_filterStatus == 2) {
       temp = temp.where((kh) => kh['trang_thai'] == 1).toList();
-    } else if (_filterType == "F") {
+    }
+
+    // 3. Filter by Type (Dropdown)
+    if (_filterType == "F") {
       temp = temp.where((kh) => kh['code'] == 'F').toList();
     } else if (_filterType == "6") {
       temp = temp.where((kh) => kh['code'] == '6').toList();
@@ -882,6 +956,31 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
     }
   }
 
+  Widget _buildFilterButton(String label, int value, Color color) {
+    final bool isSelected = _filterStatus == value;
+    return InkWell(
+      onTap: () {
+        setState(() => _filterStatus = value);
+        _applyFilter();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : color,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final daDocCount = _filteredList.where((k) => k['trang_thai'] == 1).length;
@@ -933,6 +1032,21 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
                     border: OutlineInputBorder()),
               ),
             ),
+          // Filter Toggle Row
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            color: Colors.grey[100],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildFilterButton("Tất cả", 0, Colors.blue),
+                const SizedBox(width: 8),
+                _buildFilterButton("Chưa đọc", 1, Colors.red),
+                const SizedBox(width: 8),
+                _buildFilterButton("Đã đọc", 2, Colors.green),
+              ],
+            ),
+          ),
           Container(
             padding: const EdgeInsets.all(12),
             color: Colors.blue[50],
@@ -966,10 +1080,101 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
                   ),
                   color: trangThai ? Colors.white : const Color(0xFFFFF8E1),
                   child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: trangThai ? Colors.green : Colors.orange,
-                      child: Icon(trangThai ? Icons.check : Icons.schedule,
-                          color: Colors.white),
+                    leading: InkWell(
+                      onTap: () async {
+                        final maKyDoc = kh['ma_ky_doc'] is int
+                            ? kh['ma_ky_doc']
+                            : int.tryParse(kh['ma_ky_doc'].toString()) ?? 0;
+
+                        if (trangThai) {
+                          // Xác nhận hủy đọc số
+                          final confirm = await UIHelper.showCustomDialog(
+                            context: context,
+                            title: 'Xác nhận',
+                            content:
+                                'Bạn có muốn hủy trạng thái ĐÃ ĐỌC của khách hàng này?',
+                            confirmText: 'Đồng ý',
+                            cancelText: 'Bỏ qua',
+                            icon: Icons.help_outline,
+                            iconColor: Colors.orange,
+                          );
+
+                          if (confirm == true) {
+                            final success =
+                                await api.huyDocSo(kh['ma_danh_bo'], maKyDoc);
+                            if (success) {
+                              final mdb = kh['ma_danh_bo'].toString();
+                              await DatabaseHelper().resetTrangThaiLocal(mdb);
+
+                              setState(() {
+                                kh['trang_thai'] = 0;
+                                kh['chi_so_moi'] = kh['chi_so_cu'];
+                                kh['tieu_thu'] = 0;
+                              });
+                              UIHelper.showCustomSnackBar(context,
+                                  message: "Đã đặt lại trạng thái!",
+                                  isSuccess: true);
+                              _taiDuLieu();
+                            } else {
+                              UIHelper.showCustomSnackBar(context,
+                                  message: "Lỗi hủy đọc số!", isError: true);
+                            }
+                          }
+                        } else {
+                          // Quick mark as read
+                          final confirmRead = await UIHelper.showCustomDialog(
+                            context: context,
+                            title: 'Xác nhận Đã Đọc',
+                            content:
+                                'Bạn có muốn đánh dấu khách hàng này là ĐÃ ĐỌC?\n(Chỉ số mới sẽ được gán bằng Chỉ số cũ: ${kh['chi_so_cu']})',
+                            confirmText: 'Đồng ý',
+                            cancelText: 'Bỏ qua',
+                            icon: Icons.check_circle,
+                            iconColor: Colors.green,
+                          );
+
+                          if (confirmRead == true) {
+                            final success = await api.ghiChiSo(
+                              kh['ma_danh_bo'],
+                              maKyDoc,
+                              kh['chi_so_cu'] ?? 0,
+                              code: kh['code'] ?? '40',
+                              ghiChu: kh['ghi_chu'] ?? '',
+                            );
+                            if (success) {
+                              setState(() {
+                                kh['trang_thai'] = 1;
+                                kh['chi_so_moi'] = kh['chi_so_cu'];
+                                kh['tieu_thu'] = 0;
+                              });
+                              UIHelper.showCustomSnackBar(context,
+                                  message: "✅ Đã đánh dấu Đã đọc thành công!",
+                                  isSuccess: true);
+
+                              await DatabaseHelper().capNhatChiSo(
+                                kh['ma_danh_bo'],
+                                kh['chi_so_cu'] ?? 0,
+                                '',
+                                ghiChu: kh['ghi_chu'] ?? '',
+                                code: kh['code'] ?? '40',
+                              );
+                              _taiDuLieu();
+                            } else {
+                              print('❌ Lỗi Quick Mark (Server): $success');
+                              UIHelper.showCustomSnackBar(context,
+                                  message:
+                                      "❌ Lỗi lưu trạng thái! Vui lòng kiểm tra kết nối.",
+                                  isError: true);
+                            }
+                          }
+                        }
+                      },
+                      child: CircleAvatar(
+                        backgroundColor:
+                            trangThai ? Colors.green : Colors.orange,
+                        child: Icon(trangThai ? Icons.check : Icons.schedule,
+                            color: Colors.white),
+                      ),
                     ),
                     title: Row(
                       children: [
@@ -1297,9 +1502,17 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     _currentIndex = widget.initialIndex;
     _csMoiController.addListener(_calculateTieuThu);
 
+    _loadUserSession();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadDataForCurrentIndex();
     });
+  }
+
+  Future<void> _loadUserSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final username = prefs.getString('username');
+    api.setUsername(username);
   }
 
   @override
@@ -1484,15 +1697,39 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     }
   }
 
-  Future<void> _luuChiSo() async {
-    final soMoi = int.tryParse(_csMoiController.text);
-    if (soMoi == null) {
-      UIHelper.showCustomSnackBar(context,
-          message: "Chỉ số không hợp lệ", isError: true);
-      return;
+  Future<void> _luuChiSo(
+      {bool silent = false, bool useOldIndex = false}) async {
+    final khCurrent = _danhSachKH[_currentIndex];
+    int? soMoi;
+
+    if (useOldIndex) {
+      soMoi = khCurrent['chi_so_cu'] ?? 0;
+      // Also update controller for visual feedback
+      _csMoiController.text = soMoi.toString();
+    } else {
+      soMoi = int.tryParse(_csMoiController.text);
     }
 
-    final khCurrent = _danhSachKH[_currentIndex];
+    if (soMoi == null) {
+      if (!silent) {
+        // Quick Mark as Read prompt if field is empty
+        final confirmQuick = await UIHelper.showCustomDialog(
+          context: context,
+          title: 'Ghi nhanh',
+          content:
+              'Bạn chưa nhập chỉ số mới. Bạn có muốn đánh dấu ĐÃ ĐỌC với chỉ số cũ (${khCurrent['chi_so_cu'] ?? 0}) không?',
+          confirmText: 'Đồng ý',
+          cancelText: 'Bỏ qua',
+          icon: Icons.flash_on,
+          iconColor: Colors.orange,
+        );
+        if (confirmQuick == true) {
+          print('⚡ Triggering Quick Mark as Read (Use Old Index)');
+          return _luuChiSo(useOldIndex: true);
+        }
+      }
+      return;
+    }
 
     // Gọi API ghi chỉ số (kết hợp cập nhật + lưu lịch sử)
     final maKyDoc = khCurrent['ma_ky_doc'] ?? 0;
@@ -1507,15 +1744,17 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
     );
 
     if (!mounted) return;
-
     if (!success) {
       UIHelper.showCustomSnackBar(context,
-          message: "Lỗi lưu chỉ số (Server)! Nhưng sẽ lưu Offline.",
-          isError: true);
-      // Continue to save offline even if server fails
+          message: "❌ Lỗi lưu Server! Chỉ đã lưu Offline.", isError: true);
     } else {
-      UIHelper.showCustomSnackBar(context,
-          message: "Đã lưu chỉ số lên Server!", isSuccess: true);
+      if (!silent) {
+        UIHelper.showCustomSnackBar(context,
+            message: useOldIndex
+                ? "✅ Đã đánh dấu Đã đọc (Ghi nhanh)!"
+                : "✅ Đã lưu chỉ số lên Server!",
+            isSuccess: true);
+      }
     }
 
     // Always save to local DB (including image path)
@@ -1826,34 +2065,55 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                 size: 20, color: Colors.orange),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text("Ghi Chú:",
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.orange,
-                                          fontSize: 13)),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    (kh['ghi_chu'] != null &&
-                                            kh['ghi_chu']
-                                                .toString()
-                                                .trim()
-                                                .isNotEmpty)
-                                        ? kh['ghi_chu'].toString()
-                                        : "Chưa có ghi chú",
-                                    style: TextStyle(
-                                        fontStyle: FontStyle.italic,
-                                        color: (kh['ghi_chu'] != null &&
+                              child: InkWell(
+                                onTap: _showNoteEditDialog,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                        color: Colors.amber.withOpacity(0.3)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.edit_note,
+                                              size: 16, color: Colors.orange),
+                                          const SizedBox(width: 4),
+                                          const Text("Ghi Chú:",
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.orange,
+                                                  fontSize: 13)),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        (kh['ghi_chu'] != null &&
                                                 kh['ghi_chu']
                                                     .toString()
                                                     .trim()
                                                     .isNotEmpty)
-                                            ? Colors.black87
-                                            : Colors.grey),
+                                            ? kh['ghi_chu'].toString()
+                                            : "Chưa có ghi chú (Chạm để sửa)",
+                                        style: TextStyle(
+                                            fontStyle: FontStyle.italic,
+                                            color: (kh['ghi_chu'] != null &&
+                                                    kh['ghi_chu']
+                                                        .toString()
+                                                        .trim()
+                                                        .isNotEmpty)
+                                                ? Colors.black87
+                                                : Colors.grey),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           ],
@@ -2058,13 +2318,12 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                         }
 
                                         if (result != null) {
+                                          // 1. Update UI State
                                           setState(() {
                                             final chiSo = result!['chiSo'];
                                             if (chiSo != null) {
                                               _csMoiController.text =
                                                   chiSo.toString();
-                                              // kh['chi_so_moi'] = chiSo; // Don't auto-save to model yet
-                                              // kh['trang_thai'] = 1;
                                             }
                                             // Always update image path if result is returned
                                             if (result['imagePath'] != null) {
@@ -2075,6 +2334,20 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                                   result['imagePath'];
                                             }
                                           });
+
+                                          // 2. Async Auto-save (outside setState)
+                                          if (result['imagePath'] != null) {
+                                            final maKyDoc = kh['ma_ky_doc']
+                                                    is int
+                                                ? kh['ma_ky_doc']
+                                                : int.tryParse(kh['ma_ky_doc']
+                                                        .toString()) ??
+                                                    0;
+                                            await api.capNhatHinhAnh(
+                                                kh['ma_danh_bo'],
+                                                maKyDoc,
+                                                result['imagePath']);
+                                          }
                                         }
                                       },
                                       child: Container(
@@ -2156,10 +2429,26 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                                 top: -8,
                                                 right: -8,
                                                 child: GestureDetector(
-                                                  onTap: () {
+                                                  onTap: () async {
                                                     setState(() =>
                                                         _capturedImagePath =
                                                             null);
+
+                                                    // Auto-save: delete image on server (send empty string)
+                                                    final kh = _danhSachKH[
+                                                        _currentIndex];
+                                                    final maKyDoc = kh[
+                                                            'ma_ky_doc'] is int
+                                                        ? kh['ma_ky_doc']
+                                                        : int.tryParse(kh[
+                                                                    'ma_ky_doc']
+                                                                .toString()) ??
+                                                            0;
+                                                    // Pass empty string to clear
+                                                    await api.capNhatHinhAnh(
+                                                        kh['ma_danh_bo'],
+                                                        maKyDoc,
+                                                        "");
                                                   },
                                                   child: Container(
                                                     width: 26,
@@ -2191,6 +2480,10 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                 TextField(
                                   controller: _csMoiController,
                                   keyboardType: TextInputType.number,
+                                  // Auto-save on submit/editing complete
+                                  onEditingComplete: () =>
+                                      _luuChiSo(silent: true),
+                                  onSubmitted: (val) => _luuChiSo(silent: true),
                                   style: const TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold),
@@ -2240,22 +2533,9 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                             message: "❌ Lỗi: $e", isError: true);
                       }
                     }, color: Colors.teal),
-                    _buildBottomIcon(Icons.edit_note, "Ghi Chú", () async {
-                      final note = await UIHelper.showInputDialog(
-                        context: context,
-                        title: "Ghi Chú KH",
-                        initialValue: kh['ghi_chu'] ?? '',
-                        hintText: "Nhập ghi chú mới...",
-                        confirmText: "Lưu",
-                        cancelText: "Hủy",
-                      );
-                      if (note != null) {
-                        setState(() {
-                          kh['ghi_chu'] = note;
-                          _ghiChuController.text = note;
-                        });
-                      }
-                    }, color: Colors.amber[800]),
+                    _buildBottomIcon(
+                        Icons.edit_note, "Ghi Chú", _showNoteEditDialog,
+                        color: Colors.amber[800]),
                     _buildBottomIcon(Icons.print, "In", () async {
                       try {
                         final receipt = "===== HÓA ĐƠN NƯỚC =====\n" +
@@ -2281,6 +2561,9 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                             message: "❌ Lỗi: $e", isError: true);
                       }
                     }, color: Colors.purple),
+                    _buildBottomIcon(Icons.check_circle, "Đã đọc",
+                        () => _luuChiSo(useOldIndex: true),
+                        color: Colors.green),
                     _buildBottomIcon(Icons.save, "Lưu", _luuChiSo,
                         color: Colors.blue[800]),
                   ],
@@ -2303,6 +2586,30 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
         return const Color(0xFFE6EE9C);
       default:
         return Colors.transparent;
+    }
+  }
+
+  Future<void> _showNoteEditDialog() async {
+    final kh = _danhSachKH[_currentIndex];
+    final note = await UIHelper.showInputDialog(
+      context: context,
+      title: "Ghi Chú KH",
+      initialValue: kh['ghi_chu'] ?? '',
+      hintText: "Nhập ghi chú mới...",
+      confirmText: "Lưu",
+      cancelText: "Hủy",
+    );
+    if (note != null) {
+      setState(() {
+        kh['ghi_chu'] = note;
+        _ghiChuController.text = note;
+      });
+
+      // Auto-save note to server
+      final maKyDoc = kh['ma_ky_doc'] is int
+          ? kh['ma_ky_doc']
+          : int.tryParse(kh['ma_ky_doc'].toString()) ?? 0;
+      await api.capNhatGhiChu(kh['ma_danh_bo'], maKyDoc, note);
     }
   }
 

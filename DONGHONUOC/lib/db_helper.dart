@@ -321,4 +321,21 @@ class DatabaseHelper {
       whereArgs: [maDB],
     );
   }
+
+  /// Đặt lại trạng thái cục bộ của một khách hàng về Chưa Đọc
+  Future<void> resetTrangThaiLocal(String maDB) async {
+    final db = await database;
+    await db.update(
+      'khach_hang',
+      {
+        'trang_thai': 0,
+        'chi_so_moi': 0,
+        'hinh_anh': null,
+      },
+      where: 'ma_danh_bo = ?',
+      whereArgs: [maDB.toString().trim()],
+    );
+    await AppLogger()
+        .info('Đã reset trạng thái cục bộ KH: $maDB', context: 'DB');
+  }
 }

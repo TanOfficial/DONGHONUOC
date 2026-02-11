@@ -104,60 +104,73 @@ namespace DONGHONUOC_API.Controllers
         [HttpPost("ghi")]
         public async Task<ActionResult> GhiChiSo([FromBody] GhiChiSoRequest request)
         {
-            var docCS = await _db.DocChiSo
-                .FirstOrDefaultAsync(d => d.MaDanhBo == request.MaDanhBo && d.MaKyDoc == request.MaKyDoc);
-
-            if (docCS == null)
+            try 
             {
-                // Tự động tạo mới nếu chưa có (Lazy Initialization)
-                // Lấy chỉ số mới nhất của kỳ trước đó làm chỉ số cũ
-                var lastReading = await _db.DocChiSo
-                    .Where(d => d.MaDanhBo == request.MaDanhBo && d.TrangThai >= 1)
-                    .OrderByDescending(d => d.MaKyDoc)
-                    .FirstOrDefaultAsync();
+                Console.WriteLine($"🔍 GhiChiSo Request: MaDB={request.MaDanhBo}, Ky={request.MaKyDoc}, CSM={request.ChiSoMoi}");
 
-                int chiSoCu = lastReading != null && lastReading.ChiSoMoi.HasValue ? lastReading.ChiSoMoi.Value : 0;
+                var docCS = await _db.DocChiSo
+                    .FirstOrDefaultAsync(d => d.MaDanhBo == request.MaDanhBo && d.MaKyDoc == request.MaKyDoc);
 
-                docCS = new DocChiSo
+                if (docCS == null)
+                {
+                    Console.WriteLine($"✨ Creating new DocChiSo record for MaDB={request.MaDanhBo}");
+                    // Tự động tạo mới nếu chưa có (Lazy Initialization)
+                    // Lấy chỉ số mới nhất của kỳ trước đó làm chỉ số cũ
+                    var lastReading = await _db.DocChiSo
+                        .Where(d => d.MaDanhBo == request.MaDanhBo && d.TrangThai >= 1)
+                        .OrderByDescending(d => d.MaKyDoc)
+                        .FirstOrDefaultAsync();
+
+                    int chiSoCu = lastReading != null && lastReading.ChiSoMoi.HasValue ? lastReading.ChiSoMoi.Value : 0;
+
+                    docCS = new DocChiSo
+                    {
+                        MaDanhBo = request.MaDanhBo,
+                        MaKyDoc = request.MaKyDoc,
+                        ChiSoCu = chiSoCu,
+                        TBTT = 0,
+                        TrangThai = 0,
+                        MaCode = "40" // Mặc định
+                    };
+
+                    _db.DocChiSo.Add(docCS);
+                }
+
+                // Cập nhật chỉ số
+                docCS.ChiSoMoi = request.ChiSoMoi;
+                docCS.MaCode = request.MaCode;
+                docCS.GhiChu = request.GhiChu;
+                docCS.TinhTrang = request.TinhTrang;
+                docCS.HinhAnh = request.HinhAnh;
+                docCS.NguoiDoc = request.NguoiDoc;
+                docCS.NgayDoc = DateTime.Now;
+                docCS.TrangThai = 1; // Đã đọc
+
+                // Lưu lịch sử
+                var lichSu = new LichSuDocSo
                 {
                     MaDanhBo = request.MaDanhBo,
                     MaKyDoc = request.MaKyDoc,
-                    ChiSoCu = chiSoCu,
-                    TBTT = 0,
-                    TrangThai = 0,
-                    MaCode = "40" // Mặc định
+                    ChiSo = request.ChiSoMoi,
+                    TieuThu = request.ChiSoMoi > docCS.ChiSoCu ? request.ChiSoMoi - docCS.ChiSoCu : 0,
+                    MaCode = request.MaCode,
+                    HanhDong = "DocMoi",
+                    NguoiThucHien = request.NguoiDoc,
+                    ThoiGian = DateTime.Now
                 };
+                _db.LichSuDocSo.Add(lichSu);
 
-                _db.DocChiSo.Add(docCS);
+                await _db.SaveChangesAsync();
+                
+                Console.WriteLine($"✅ GhiChiSo SUCCESS: ID={docCS.ID}, TieuThu={lichSu.TieuThu}");
+                return Ok(new { message = "Đã lưu chỉ số thành công!", tieuThu = lichSu.TieuThu });
             }
-
-            // Cập nhật chỉ số
-            docCS.ChiSoMoi = request.ChiSoMoi;
-            docCS.MaCode = request.MaCode;
-            docCS.GhiChu = request.GhiChu;
-            docCS.TinhTrang = request.TinhTrang;
-            docCS.HinhAnh = request.HinhAnh;
-            docCS.NguoiDoc = request.NguoiDoc;
-            docCS.NgayDoc = DateTime.Now;
-            docCS.TrangThai = 1; // Đã đọc
-
-            // Lưu lịch sử
-            var lichSu = new LichSuDocSo
+            catch (Exception ex)
             {
-                MaDanhBo = request.MaDanhBo,
-                MaKyDoc = request.MaKyDoc,
-                ChiSo = request.ChiSoMoi,
-                TieuThu = request.ChiSoMoi > docCS.ChiSoCu ? request.ChiSoMoi - docCS.ChiSoCu : 0,
-                MaCode = request.MaCode,
-                HanhDong = "DocMoi",
-                NguoiThucHien = request.NguoiDoc,
-                ThoiGian = DateTime.Now
-            };
-            _db.LichSuDocSo.Add(lichSu);
-
-            await _db.SaveChangesAsync();
-
-            return Ok(new { message = "Đã lưu chỉ số thành công!", tieuThu = lichSu.TieuThu });
+                Console.WriteLine($"❌ GhiChiSo ERROR: {ex.Message}");
+                if (ex.InnerException != null) Console.WriteLine($"   Inner: {ex.InnerException.Message}");
+                return StatusCode(500, new { message = "Lỗi server khi ghi chỉ số", error = ex.Message });
+            }
         }
 
         /// <summary>
@@ -176,6 +189,134 @@ namespace DONGHONUOC_API.Controllers
             await _db.SaveChangesAsync();
 
             return Ok(new { message = "Đã cập nhật code" });
+        }
+
+        /// <summary>
+        /// Cập nhật ghi chú (Auto-save)
+        /// </summary>
+        [HttpPut("note")]
+        public async Task<ActionResult> CapNhatGhiChu([FromBody] CapNhatGhiChuRequest request)
+        {
+            var docCS = await _db.DocChiSo
+                .FirstOrDefaultAsync(d => d.MaDanhBo == request.MaDanhBo && d.MaKyDoc == request.MaKyDoc);
+
+            if (docCS == null)
+            {
+                // Lazy Init if not exists
+                var lastReading = await _db.DocChiSo
+                    .Where(d => d.MaDanhBo == request.MaDanhBo && d.TrangThai >= 1)
+                    .OrderByDescending(d => d.MaKyDoc)
+                    .FirstOrDefaultAsync();
+
+                int chiSoCu = lastReading != null && lastReading.ChiSoMoi.HasValue ? lastReading.ChiSoMoi.Value : 0;
+
+                docCS = new DocChiSo
+                {
+                    MaDanhBo = request.MaDanhBo,
+                    MaKyDoc = request.MaKyDoc,
+                    ChiSoCu = chiSoCu,
+                    TBTT = 0,
+                    TrangThai = 0, // Vẫn là chưa đọc nếu chỉ update note
+                    MaCode = "40"
+                };
+                _db.DocChiSo.Add(docCS);
+            }
+
+            docCS.GhiChu = request.GhiChu;
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Đã cập nhật ghi chú" });
+        }
+
+        /// <summary>
+        /// Cập nhật hình ảnh (Auto-save)
+        /// </summary>
+        [HttpPut("image")]
+        public async Task<ActionResult> CapNhatHinhAnh([FromBody] CapNhatHinhAnhRequest request)
+        {
+            var docCS = await _db.DocChiSo
+                .FirstOrDefaultAsync(d => d.MaDanhBo == request.MaDanhBo && d.MaKyDoc == request.MaKyDoc);
+
+            if (docCS == null)
+            {
+                // Lazy Init
+                var lastReading = await _db.DocChiSo
+                    .Where(d => d.MaDanhBo == request.MaDanhBo && d.TrangThai >= 1)
+                    .OrderByDescending(d => d.MaKyDoc)
+                    .FirstOrDefaultAsync();
+
+                int chiSoCu = lastReading != null && lastReading.ChiSoMoi.HasValue ? lastReading.ChiSoMoi.Value : 0;
+
+                docCS = new DocChiSo
+                {
+                    MaDanhBo = request.MaDanhBo,
+                    MaKyDoc = request.MaKyDoc,
+                    ChiSoCu = chiSoCu,
+                    TBTT = 0,
+                    TrangThai = 0,
+                    MaCode = "40"
+                };
+                _db.DocChiSo.Add(docCS);
+            }
+
+            docCS.HinhAnh = request.HinhAnh;
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Đã cập nhật hình ảnh" });
+        }
+
+        /// <summary>
+        /// Hủy đọc số (Reset về chưa đọc)
+        /// </summary>
+        [HttpPut("reset")]
+        public async Task<ActionResult> HuyDocSo([FromBody] ResetDocSoRequest request)
+        {
+            try 
+            {
+                Console.WriteLine($"🔍 HuyDocSo Request: MaDB={request.MaDanhBo}, Ky={request.MaKyDoc}");
+
+                var docCS = await _db.DocChiSo
+                    .FirstOrDefaultAsync(d => d.MaDanhBo == request.MaDanhBo && d.MaKyDoc == request.MaKyDoc);
+
+                if (docCS == null)
+                {
+                    Console.WriteLine($"⚠️ DocChiSo not found for MaDB={request.MaDanhBo}, Ky={request.MaKyDoc}");
+                    return NotFound(new { message = "Chưa có dữ liệu đọc số để hủy" });
+                }
+
+                Console.WriteLine($"✅ Resetting DocChiSo ID={docCS.ID}, TrangThai={docCS.TrangThai} -> 0");
+
+                docCS.TrangThai = 0;
+                docCS.ChiSoMoi = docCS.ChiSoCu;
+                
+                // Keep image as is, or remove? Keeping for now as per "giữ dữ liệu"
+
+                // Ghi log lịch sử
+                var lichSu = new LichSuDocSo
+                {
+                    MaDanhBo = request.MaDanhBo,
+                    MaKyDoc = request.MaKyDoc,
+                    ChiSo = docCS.ChiSoMoi ?? 0,
+                    TieuThu = 0,
+                    MaCode = docCS.MaCode,
+                    HanhDong = "HuyDoc_GiuThoiGian",
+                    NguoiThucHien = "System", 
+                    ThoiGian = DateTime.Now
+                };
+                _db.LichSuDocSo.Add(lichSu);
+
+                await _db.SaveChangesAsync();
+
+                return Ok(new { 
+                    message = "Đã hủy đọc số (giữ thời gian)",
+                    data = docCS
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error in HuyDocSo: {ex.Message}");
+                return StatusCode(500, new { message = "Lỗi server khi hủy đọc số", error = ex.Message });
+            }
         }
 
         /// <summary>

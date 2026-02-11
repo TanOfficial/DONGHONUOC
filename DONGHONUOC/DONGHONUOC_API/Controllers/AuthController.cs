@@ -46,8 +46,38 @@ namespace DONGHONUOC_API.Controllers
                 Message = "Đăng nhập thành công",
                 Username = user.Username,
                 HoTen = user.HoTen,
-                VaiTro = user.VaiTro
+                VaiTro = user.VaiTro,
+                Avatar = user.Avatar
             });
+        }
+
+        /// <summary>
+        /// Cập nhật Avatar
+        /// </summary>
+        [HttpPost("avatar")]
+        public async Task<ActionResult<bool>> UpdateAvatar([FromBody] UpdateAvatarRequest request)
+        {
+            Console.WriteLine($"[UpdateAvatar] Request received for User: {request.Username}");
+            
+            if (string.IsNullOrEmpty(request.Username))
+            {
+                Console.WriteLine("[UpdateAvatar] Username is empty!");
+                return BadRequest("Username is required");
+            }
+
+            var user = await _db.NguoiDung.FirstOrDefaultAsync(u => u.Username == request.Username);
+            if (user == null)
+            {
+                Console.WriteLine($"[UpdateAvatar] User not found: {request.Username}");
+                return NotFound("Không tìm thấy người dùng!");
+            }
+            
+            Console.WriteLine($"[UpdateAvatar] Updating avatar for {request.Username}...");
+
+            user.Avatar = request.AvatarBase64;
+            await _db.SaveChangesAsync();
+
+            return Ok(true);
         }
 
         /// <summary>

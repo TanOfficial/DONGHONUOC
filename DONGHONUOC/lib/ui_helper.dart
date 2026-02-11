@@ -72,7 +72,8 @@ class UIHelper {
                   if (cancelText != null) ...[
                     Expanded(
                       child: TextButton(
-                        onPressed: onCancel ?? () => Navigator.pop(context),
+                        onPressed: onCancel ??
+                            () => Navigator.pop(context, false as T),
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -91,7 +92,8 @@ class UIHelper {
                   if (confirmText != null)
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: onConfirm,
+                        onPressed: onConfirm ??
+                            () => Navigator.pop(context, true as T),
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
                               isError ? Colors.red : const Color(0xFF2196F3),

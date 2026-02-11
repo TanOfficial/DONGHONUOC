@@ -33,6 +33,26 @@ namespace DONGHONUOC_API.Models
         public string MaCode { get; set; } = "40";
     }
 
+    public class CapNhatGhiChuRequest
+    {
+        public string MaDanhBo { get; set; } = "";
+        public int MaKyDoc { get; set; }
+        public string GhiChu { get; set; } = "";
+    }
+
+    public class CapNhatHinhAnhRequest
+    {
+        public string MaDanhBo { get; set; } = "";
+        public int MaKyDoc { get; set; }
+        public string HinhAnh { get; set; } = "";
+    }
+
+    public class ResetDocSoRequest
+    {
+        public string MaDanhBo { get; set; } = "";
+        public int MaKyDoc { get; set; }
+    }
+
     // ====== Response DTOs ======
     public class LoginResponse
     {
@@ -41,6 +61,13 @@ namespace DONGHONUOC_API.Models
         public string? Username { get; set; }
         public string? HoTen { get; set; }
         public string? VaiTro { get; set; }
+        public string? Avatar { get; set; }
+    }
+
+    public class UpdateAvatarRequest
+    {
+        public string Username { get; set; } = "";
+        public string AvatarBase64 { get; set; } = "";
     }
 
     public class ThongKeResponse

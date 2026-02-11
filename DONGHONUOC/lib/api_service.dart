@@ -16,6 +16,10 @@ class ApiService {
 
   String? _currentUsername;
 
+  void setUsername(String? username) {
+    _currentUsername = username;
+  }
+
   // ====== AUTH ======
 
   /// Đăng nhập
@@ -36,6 +40,7 @@ class ApiService {
             'username': data['Username'],
             'fullname': data['HoTen'],
             'vaiTro': data['VaiTro'],
+            'avatar': data['Avatar'], // Thêm avatar
           };
         }
       }
@@ -43,6 +48,25 @@ class ApiService {
     } catch (e) {
       print('❌ Lỗi đăng nhập: $e');
       return null;
+    }
+  }
+
+  /// Cập nhật Avatar
+  Future<bool> updateAvatar(String username, String base64Image) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/avatar'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'Username': username,
+          'AvatarBase64': base64Image,
+        }),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('❌ Lỗi cập nhật avatar: $e');
+      return false;
     }
   }
 
@@ -203,6 +227,77 @@ class ApiService {
       );
     } catch (e) {
       print('❌ Lỗi cập nhật code: $e');
+    }
+  }
+
+  /// Cập nhật ghi chú
+  Future<void> capNhatGhiChu(
+      String maDanhBo, int maKyDoc, String ghiChu) async {
+    try {
+      await http.put(
+        Uri.parse('$_baseUrl/docchiso/note'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'MaDanhBo': maDanhBo,
+          'MaKyDoc': maKyDoc,
+          'GhiChu': ghiChu,
+        }),
+      );
+    } catch (e) {
+      print('❌ Lỗi cập nhật ghi chú: $e');
+    }
+  }
+
+  /// Cập nhật hình ảnh (gửi Base64)
+  Future<void> capNhatHinhAnh(
+      String maDanhBo, int maKyDoc, String imagePath) async {
+    try {
+      String? base64Image;
+      final file = File(imagePath);
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        base64Image = base64Encode(bytes);
+      }
+
+      if (base64Image == null) return;
+
+      await http.put(
+        Uri.parse('$_baseUrl/docchiso/image'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'MaDanhBo': maDanhBo,
+          'MaKyDoc': maKyDoc,
+          'HinhAnh': base64Image,
+        }),
+      );
+      print('📸 Đã cập nhật ảnh lên server');
+    } catch (e) {
+      print('❌ Lỗi cập nhật hình ảnh: $e');
+    }
+  }
+
+  /// Hủy đọc số (Reset trạng thái)
+  Future<bool> huyDocSo(String maDanhBo, int maKyDoc) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/docchiso/reset'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'MaDanhBo': maDanhBo,
+          'MaKyDoc': maKyDoc,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ Hủy đọc số thành công: $maDanhBo');
+        return true;
+      } else {
+        print('❌ Lỗi hủy đọc số: ${response.statusCode} - ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Lỗi ngoại lệ hủy đọc số: $e');
+      return false;
     }
   }
 

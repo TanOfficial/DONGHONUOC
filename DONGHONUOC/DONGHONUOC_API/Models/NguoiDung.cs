@@ -33,5 +33,8 @@ namespace DONGHONUOC_API.Models
 
         [Column("TrangThai")]
         public bool TrangThai { get; set; } = true;
+
+        [Column("Avatar")]
+        public string? Avatar { get; set; }
     }
 }
