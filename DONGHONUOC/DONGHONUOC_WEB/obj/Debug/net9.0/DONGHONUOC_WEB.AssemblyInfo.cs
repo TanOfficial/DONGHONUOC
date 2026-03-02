@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DONGHONUOC_WEB")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d89f736fe7f52182e0cba7fef5429586aad3fc31")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+00c3a9643ba3558816f3976e8d0b9318c12f0d52")]
 [assembly: System.Reflection.AssemblyProductAttribute("DONGHONUOC_WEB")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DONGHONUOC_WEB")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

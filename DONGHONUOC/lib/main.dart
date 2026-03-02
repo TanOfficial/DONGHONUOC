@@ -964,6 +964,253 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
     }
   }
 
+  void _showDownloadDataDialog() {
+    String selectedTo = "Tân Phú 1";
+    String selectedMay = "02";
+    String? selectedNam;
+    String? selectedKy;
+    String selectedDot = "01";
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return FutureBuilder<List<Map<String, dynamic>>>(
+            future: ApiService().layDanhSachKyDoc(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              List<String> namList = ["2024", "2025", "2026"];
+              List<String> kyList = [
+                "01",
+                "02",
+                "03",
+                "04",
+                "05",
+                "06",
+                "07",
+                "08",
+                "09",
+                "10",
+                "11",
+                "12"
+              ];
+
+              if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                var kyDocs = snapshot.data!;
+                namList =
+                    kyDocs.map((x) => x['Nam'].toString()).toSet().toList();
+                namList.sort((a, b) => b.compareTo(a));
+
+                // Filter periods based on selected year (if any), otherwise use all
+                var filteredKyDocs = selectedNam != null
+                    ? kyDocs.where((x) => x['Nam'].toString() == selectedNam)
+                    : kyDocs;
+
+                kyList = filteredKyDocs
+                    .map((x) => x['Ky'].toString().padLeft(2, '0'))
+                    .toSet()
+                    .toList();
+                kyList.sort((a, b) => b.compareTo(a));
+
+                selectedNam ??= namList.isNotEmpty ? namList.first : "2026";
+                selectedKy ??= kyList.isNotEmpty ? kyList.first : "02";
+              } else {
+                selectedNam ??= "2026";
+                selectedKy ??= "02";
+              }
+
+              return StatefulBuilder(
+                builder: (context, setStateDialog) {
+                  return Dialog(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Tải Dữ Liệu Đọc Số",
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              const SizedBox(
+                                  width: 40,
+                                  child: Text("Tổ",
+                                      style: TextStyle(color: Colors.grey))),
+                              Expanded(
+                                child: DropdownButton<String>(
+                                  isExpanded: true,
+                                  value: selectedTo,
+                                  items: ["Tân Phú 1", "Tân Phú 2", "Tân Phú 3"]
+                                      .map((e) => DropdownMenuItem(
+                                          value: e, child: Text(e)))
+                                      .toList(),
+                                  onChanged: (v) {
+                                    if (v != null)
+                                      setStateDialog(() => selectedTo = v);
+                                  },
+                                  underline: const SizedBox(),
+                                ),
+                              )
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const SizedBox(
+                                  width: 40,
+                                  child: Text("Máy",
+                                      style: TextStyle(color: Colors.grey))),
+                              Expanded(
+                                child: DropdownButton<String>(
+                                  isExpanded: true,
+                                  value: selectedMay,
+                                  items: ["01", "02", "03", "04"]
+                                      .map((e) => DropdownMenuItem(
+                                          value: e, child: Text(e)))
+                                      .toList(),
+                                  onChanged: (v) {
+                                    if (v != null)
+                                      setStateDialog(() => selectedMay = v);
+                                  },
+                                  underline: const SizedBox(),
+                                ),
+                              )
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const SizedBox(
+                                  width: 40,
+                                  child: Text("Năm",
+                                      style: TextStyle(color: Colors.grey))),
+                              Expanded(
+                                child: DropdownButton<String>(
+                                  isExpanded: true,
+                                  value: selectedNam,
+                                  items: namList
+                                      .map((e) => DropdownMenuItem(
+                                          value: e, child: Text(e)))
+                                      .toList(),
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setStateDialog(() {
+                                        selectedNam = v;
+                                        // Reset selectedKy trigger a re-fetch of kyList for this year if using proper state management,
+                                        // To simply force a rebuild of the FutureBuilder to filter correctly, we trigger setState of the main widget (hacky string switch)
+                                        // or handle the filtering within the StatefulBuilder itself.
+
+                                        // Let's filter locally:
+                                        if (snapshot.hasData) {
+                                          selectedKy =
+                                              null; // force recalculation on next render iteration
+                                        }
+                                        setState(
+                                            () {}); // trigger main rebuild to run FutureBuilder logic anew, or just update local
+                                      });
+                                    }
+                                  },
+                                  underline: const SizedBox(),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              const Text("Kỳ",
+                                  style: TextStyle(color: Colors.grey)),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: DropdownButton<String>(
+                                  isExpanded: true,
+                                  value: selectedKy,
+                                  items: kyList
+                                      .map((e) => DropdownMenuItem(
+                                          value: e, child: Text(e)))
+                                      .toList(),
+                                  onChanged: (v) {
+                                    if (v != null)
+                                      setStateDialog(() => selectedKy = v);
+                                  },
+                                  underline: const SizedBox(),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text("Đợt",
+                                  style: TextStyle(color: Colors.grey)),
+                              const SizedBox(width: 16),
+                              DropdownButton<String>(
+                                value: selectedDot,
+                                items: ["01", "02", "03"]
+                                    .map((e) => DropdownMenuItem(
+                                        value: e, child: Text(e)))
+                                    .toList(),
+                                onChanged: (v) {
+                                  if (v != null)
+                                    setStateDialog(() => selectedDot = v);
+                                },
+                                underline: const SizedBox(),
+                              )
+                            ],
+                          ),
+                          const SizedBox(height: 32),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.grey[300],
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(4)),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 12)),
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  UIHelper.showCustomSnackBar(context,
+                                      message:
+                                          "Đang tải dữ liệu kỳ $selectedKy/$selectedNam...");
+                                },
+                                child: const Text("TẢI VỀ",
+                                    style: TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16)),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.grey[300],
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(4)),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 12)),
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text("TIN NHẮN",
+                                    style: TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16)),
+                              ),
+                            ],
+                          )
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        });
+  }
+
   Widget _buildFilterButton(String label, int value, Color color) {
     final bool isSelected = _filterStatus == value;
     return InkWell(
@@ -1014,11 +1261,15 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
             onPressed: _showFilterSortDialog,
           ),
           PopupMenuButton<String>(
+            icon: const Icon(Icons.download),
             onSelected: (value) {
+              if (value == 'download_data') _showDownloadDataDialog();
               if (value == 'import') _importData();
               if (value == 'export') _exportData();
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                  value: 'download_data', child: Text('Tải Dữ Liệu Đọc Số')),
               const PopupMenuItem(value: 'import', child: Text('Import CSV')),
               const PopupMenuItem(value: 'export', child: Text('Export CSV')),
             ],

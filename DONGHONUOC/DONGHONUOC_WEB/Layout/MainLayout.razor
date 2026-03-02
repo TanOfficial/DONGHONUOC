@@ -3,22 +3,36 @@
 @inject NavigationManager Navigation
 @using Microsoft.AspNetCore.Components.Authorization
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
+<div class="page-fullwidth">
+    <main class="w-100">
+        <div class="top-row px-4 d-flex align-items-center justify-content-between shadow-sm bg-white">
+            <div class="brand-section d-flex align-items-center">
+                <a class="navbar-brand fw-bold mb-0 d-flex align-items-center text-decoration-none" href="">
+                    <img src="images/logo.png" alt="Logo" width="28" height="28" class="me-2 rounded-circle object-fit-cover bg-white p-1" onerror="this.style.display='none'" />
+                    <span class="lh-1 text-primary fs-5">ĐỒNG HỒ NƯỚC</span>
+                </a>
+            </div>
             <AuthorizeView>
                 <Authorized>
-                    <div class="d-flex align-items-center">
-                        <span class="me-3 text-dark">
-                            <i class="bi bi-person-circle me-1 text-primary"></i> 
-                            Xin chào, <strong>@context.User.Identity?.Name</strong>
-                        </span>
-                        <button class="btn btn-sm btn-outline-danger" @onclick="Logout">
-                            <i class="bi bi-box-arrow-right me-1"></i> Đăng Xuất
+                    <div class="d-flex align-items-center py-2">
+                        <div class="d-flex align-items-center me-4">
+                            @{
+                                var avatarBase64 = context.User.FindFirst("Avatar")?.Value;
+                                if (!string.IsNullOrEmpty(avatarBase64))
+                                {
+                                    <img src="data:image/jpeg;base64,@avatarBase64" alt="User Avatar" class="avatar-img me-2" />
+                                }
+                                else
+                                {
+                                    <i class="bi bi-person-circle fs-4 me-2 text-primary"></i> 
+                                }
+                            }
+                            <span class="text-dark">
+                                Xin chào, <strong>@context.User.Identity?.Name</strong>
+                            </span>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger d-flex align-items-center" @onclick="Logout">
+                            <i class="bi bi-box-arrow-right me-2"></i>Đăng Xuất
                         </button>
                     </div>
                 </Authorized>

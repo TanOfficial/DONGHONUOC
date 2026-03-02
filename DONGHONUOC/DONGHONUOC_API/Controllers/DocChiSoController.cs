@@ -357,6 +357,93 @@ namespace DONGHONUOC_API.Controllers
         }
 
         /// <summary>
+        /// Thêm kỳ đọc mới
+        /// </summary>
+        [HttpPost("kydoc")]
+        public async Task<ActionResult<KyDoc>> PostKyDoc([FromBody] KyDoc kyDoc)
+        {
+            try
+            {
+                _db.KyDoc.Add(kyDoc);
+                await _db.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(GetKyDoc), new { id = kyDoc.MaKyDoc }, kyDoc);
+            }
+            catch (DbUpdateException ex)
+            {
+                if (ex.InnerException != null && ex.InnerException.Message.Contains("Violation of UNIQUE KEY constraint"))
+                {
+                    return BadRequest($"Kỳ đọc Tháng {kyDoc.Ky} Năm {kyDoc.Nam} đã tồn tại trong hệ thống!");
+                }
+                return StatusCode(500, "Lỗi hệ thống khi thêm kỳ đọc: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Cập nhật kỳ đọc
+        /// </summary>
+        [HttpPut("kydoc/{id}")]
+        public async Task<IActionResult> PutKyDoc(int id, [FromBody] KyDoc kyDoc)
+        {
+            if (id != kyDoc.MaKyDoc)
+            {
+                return BadRequest("ID không khớp");
+            }
+
+            _db.Entry(kyDoc).State = EntityState.Modified;
+
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!_db.KyDoc.Any(e => e.MaKyDoc == id))
+                {
+                    return NotFound("Không tìm thấy kỳ đọc");
+                }
+                else
+                {
+                    throw;
+                }
+            }
+            catch (DbUpdateException ex)
+            {
+                if (ex.InnerException != null && ex.InnerException.Message.Contains("Violation of UNIQUE KEY constraint"))
+                {
+                    return BadRequest($"Kỳ đọc Tháng {kyDoc.Ky} Năm {kyDoc.Nam} đã tồn tại trong hệ thống!");
+                }
+                return StatusCode(500, "Lỗi hệ thống khi cập nhật kỳ đọc: " + ex.Message);
+            }
+
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Xóa kỳ đọc
+        /// </summary>
+        [HttpDelete("kydoc/{id}")]
+        public async Task<IActionResult> DeleteKyDoc(int id)
+        {
+            var kyDoc = await _db.KyDoc.FindAsync(id);
+            if (kyDoc == null)
+            {
+                return NotFound(new { message = "Không tìm thấy kỳ đọc" });
+            }
+
+            bool hasReadings = await _db.DocChiSo.AnyAsync(d => d.MaKyDoc == id);
+            if (hasReadings)
+            {
+                return BadRequest(new { message = "Không thể xóa kỳ đọc đã có dữ liệu ghi chỉ số" });
+            }
+
+            _db.KyDoc.Remove(kyDoc);
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Đã xóa kỳ đọc thành công" });
+        }
+
+        /// <summary>
         /// Thống kê kỳ đọc
         /// </summary>
         [HttpGet("thongke/{maKyDoc}")]

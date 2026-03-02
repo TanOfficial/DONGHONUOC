@@ -33,6 +33,24 @@ namespace DONGHONUOC_WEB.Services
             return new LoginResponse { Success = false, Message = "Lỗi kết nối server" };
         }
 
+        public async Task<LoginResponse> Register(RegisterRequest registerRequest)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("api/Auth/register", registerRequest);
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+                    return result ?? new LoginResponse { Success = false, Message = "Đăng ký thất bại" };
+                }
+                return new LoginResponse { Success = false, Message = "Lỗi kết nối server hoặc tài khoản đã tồn tại" };
+            }
+            catch (Exception ex)
+            {
+                return new LoginResponse { Success = false, Message = ex.Message };
+            }
+        }
+
         public async Task Logout()
         {
             await _authStateProvider.MarkUserAsLoggedOut();

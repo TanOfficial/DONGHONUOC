@@ -12,7 +12,7 @@ class ApiService {
   // ⚠️ THAY ĐỔI IP NÀY THÀNH IP MÁY TÍNH CỦA BẠN
   // Chạy `ipconfig` trong CMD để lấy IPv4 Address
   // Ví dụ: 192.168.1.100
-  static const String _baseUrl = 'http://192.168.1.91:5000/api';
+  static const String _baseUrl = 'http://192.168.1.189:5000/api';
 
   String? _currentUsername;
 

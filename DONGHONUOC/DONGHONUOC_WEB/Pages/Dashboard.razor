@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @attribute [Authorize]
 @inject HttpClient Http
+@inject IJSRuntime JS
 
 <PageTitle>Dashboard - Quản Lý Đọc Số</PageTitle>
 
@@ -61,8 +62,9 @@
 </div>
 
 <div class="card shadow-sm border-0">
-    <div class="card-header bg-white py-3 border-bottom">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
         <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-list-ul me-2"></i>Danh Sách Kỳ Đọc Số</h5>
+        <button class="btn btn-primary btn-sm" @onclick="ShowAddModal"><i class="bi bi-plus-lg me-1"></i>Thêm Mới</button>
     </div>
     <div class="card-body p-0">
         @if (kyDocs == null)
@@ -97,7 +99,7 @@
                                 <td>@ky.NgayBatDau?.ToShortDateString()</td>
                                 <td>@ky.NgayKetThuc?.ToShortDateString()</td>
                                 <td>
-                                    @if (ky.TrangThai)
+                                    @if (ky.TrangThai == "Mở")
                                     {
                                         <span class="badge bg-success">Hoạt động</span>
                                     }
@@ -107,7 +109,8 @@
                                     }
                                 </td>
                                 <td class="text-end pe-4">
-                                    <button class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></button>
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowEditModal(ky)" title="Sửa"><i class="bi bi-pencil"></i></button>
+                                    <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => ShowConfirmDeleteModal(ky.MaKyDoc, ky.TenKyDoc)" title="Xóa"><i class="bi bi-trash"></i></button>
                                 </td>
                             </tr>
                         }
@@ -118,10 +121,115 @@
     </div>
 </div>
 
+<!-- Modal Thêm/Sửa Kỳ Đọc -->
+@if (showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(isEdit ? "Cập Nhật Kỳ Đọc" : "Thêm Kỳ Đọc Mới")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Tên Kỳ Đọc</label>
+                        <input type="text" class="form-control" @bind="currentKyDoc.TenKyDoc" />
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Tháng</label>
+                            <input type="number" class="form-control" @bind="currentKyDoc.Ky" min="1" max="12" />
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Năm</label>
+                            <input type="number" class="form-control" @bind="currentKyDoc.Nam" min="2000" />
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Ngày Bắt Đầu</label>
+                            <input type="date" class="form-control" @bind="currentKyDoc.NgayBatDau" />
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Ngày Kết Thúc</label>
+                            <input type="date" class="form-control" @bind="currentKyDoc.NgayKetThuc" />
+                        </div>
+                    </div>
+                    @if (isEdit)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Trạng Thái</label>
+                            <select class="form-select" @bind="currentKyDoc.TrangThai">
+                                <option value="Mở">Mở</option>
+                                <option value="Đóng">Đóng</option>
+                            </select>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Hủy</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveKyDoc">Lưu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal Xác Nhận Xóa -->
+@if (showConfirmModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Xác Nhận Xóa</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseConfirmModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0" style="white-space: pre-line;">@confirmMessage</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseConfirmModal">Hủy</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Xóa Bỏ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal Thông Báo Lỗi -->
+@if (showErrorModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-danger">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-x-circle-fill me-2"></i>Không Thể Xóa</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseErrorModal"></button>
+                </div>
+                <div class="modal-body text-danger">
+                    <p class="mb-0" style="white-space: pre-line;">@errorMessage</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-dark" @onclick="CloseErrorModal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 @code {
     private KyDoc[]? kyDocs;
+    private bool showModal = false;
+    private bool isEdit = false;
+    private KyDoc currentKyDoc = new KyDoc();
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
     {
         try 
         {
@@ -130,6 +238,139 @@
         catch (Exception ex)
         {
             Console.WriteLine($"Error fetching data: {ex.Message}");
+        }
+    }
+
+    private void ShowAddModal()
+    {
+        currentKyDoc = new KyDoc 
+        { 
+            Ky = DateTime.Now.Month, 
+            Nam = DateTime.Now.Year,
+            TrangThai = "Mở"
+        };
+        isEdit = false;
+        showModal = true;
+    }
+
+    private void ShowEditModal(KyDoc ky)
+    {
+        currentKyDoc = new KyDoc
+        {
+            MaKyDoc = ky.MaKyDoc,
+            TenKyDoc = ky.TenKyDoc,
+            Ky = ky.Ky,
+            Nam = ky.Nam,
+            NgayBatDau = ky.NgayBatDau,
+            NgayKetThuc = ky.NgayKetThuc,
+            TrangThai = ky.TrangThai
+        };
+        isEdit = true;
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+    private async Task SaveKyDoc()
+    {
+        try
+        {
+            if (isEdit)
+            {
+                var response = await Http.PutAsJsonAsync($"api/DocChiSo/kydoc/{currentKyDoc.MaKyDoc}", currentKyDoc);
+                if (response.IsSuccessStatusCode)
+                {
+                    await LoadData();
+                    CloseModal();
+                }
+                else
+                {
+                    string errorMsg = await response.Content.ReadAsStringAsync();
+                    ShowErrorModal($"Cập nhật thất bại.\nChi tiết: {errorMsg}");
+                }
+            }
+            else
+            {
+                var response = await Http.PostAsJsonAsync("api/DocChiSo/kydoc", currentKyDoc);
+                if (response.IsSuccessStatusCode)
+                {
+                    await LoadData();
+                    CloseModal();
+                }
+                else
+                {
+                    string errorMsg = await response.Content.ReadAsStringAsync();
+                    ShowErrorModal($"Thêm mới thất bại.\nChi tiết: {errorMsg}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowErrorModal($"Lỗi hệ thống: {ex.Message}");
+        }
+    }
+
+    private bool showConfirmModal = false;
+    private string confirmMessage = "";
+    private int? pendingDeleteId = null;
+
+    private bool showErrorModal = false;
+    private string errorMessage = "";
+
+    private void ShowConfirmDeleteModal(int id, string tenKy)
+    {
+        pendingDeleteId = id;
+        confirmMessage = $"Bạn có chắc chắn muốn xóa {tenKy} không?\nLưu ý: Không thể xóa nếu kỳ đọc đã có dữ liệu.";
+        showConfirmModal = true;
+    }
+
+    private void CloseConfirmModal()
+    {
+        showConfirmModal = false;
+        pendingDeleteId = null;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (pendingDeleteId.HasValue)
+        {
+            await ExecuteDelete(pendingDeleteId.Value);
+            CloseConfirmModal();
+        }
+    }
+
+    private void ShowErrorModal(string message)
+    {
+        errorMessage = message;
+        showErrorModal = true;
+    }
+
+    private void CloseErrorModal()
+    {
+        showErrorModal = false;
+    }
+
+    private async Task ExecuteDelete(int id)
+    {
+        try
+        {
+            var response = await Http.DeleteAsync($"api/DocChiSo/kydoc/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadData();
+            }
+            else
+            {
+                string errorMsg = await response.Content.ReadAsStringAsync();
+                ShowErrorModal($"Không thể xóa kỳ đọc này.\nChi tiết: {errorMsg}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowErrorModal($"Lỗi khi xóa: {ex.Message}");
         }
     }
 }
