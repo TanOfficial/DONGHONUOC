@@ -428,19 +428,20 @@ namespace DONGHONUOC_API.Controllers
             var kyDoc = await _db.KyDoc.FindAsync(id);
             if (kyDoc == null)
             {
-                return NotFound(new { message = "Không tìm thấy kỳ đọc" });
+                return NotFound("Không tìm thấy kỳ đọc");
             }
 
-            bool hasReadings = await _db.DocChiSo.AnyAsync(d => d.MaKyDoc == id);
-            if (hasReadings)
+            // Kiểm tra xem kỳ đọc có dữ liệu ghi chỉ số chưa
+            int soLuong = await _db.DocChiSo.CountAsync(d => d.MaKyDoc == id);
+            if (soLuong > 0)
             {
-                return BadRequest(new { message = "Không thể xóa kỳ đọc đã có dữ liệu ghi chỉ số" });
+                return BadRequest($"Kỳ đọc {kyDoc.TenKyDoc ?? $"Tháng {kyDoc.Ky}/{kyDoc.Nam}"} không thể xóa vì đã có {soLuong} bản ghi chỉ số.");
             }
 
             _db.KyDoc.Remove(kyDoc);
             await _db.SaveChangesAsync();
 
-            return Ok(new { message = "Đã xóa kỳ đọc thành công" });
+            return Ok("Đã xóa kỳ đọc thành công");
         }
 
         /// <summary>
