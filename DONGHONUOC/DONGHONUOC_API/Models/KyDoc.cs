@@ -3,11 +3,11 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DONGHONUOC_API.Models
 {
-    [Table("KyDoc")]
+    [Table("Lich_DocSo")]
     public class KyDoc
     {
         [Key]
-        [Column("MaKyDoc")]
+        [Column("ID")]
         public int MaKyDoc { get; set; }
 
         [Column("Ky")]
@@ -16,10 +16,13 @@ namespace DONGHONUOC_API.Models
         [Column("Nam")]
         public int Nam { get; set; }
 
-        [Column("TenKyDoc")]
-        public string? TenKyDoc { get; set; }
+        [Column("TuNgay")]
+        public DateTime? TuNgay { get; set; }
 
-        [Column("TrangThai")]
-        public string TrangThai { get; set; } = "Mở";
+        [Column("DenNgay")]
+        public DateTime? DenNgay { get; set; }
+
+        [NotMapped]
+        public string TenKyDoc => $"Tháng {Ky}/{Nam}";
     }
 }

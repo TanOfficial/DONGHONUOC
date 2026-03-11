@@ -3,11 +3,11 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DONGHONUOC_API.Models
 {
-    [Table("NguoiDung")]
+    [Table("NguoiDungB")]
     public class NguoiDung
     {
         [Key]
-        [Column("MaNguoiDung")]
+        [Column("MaND")]
         public int MaNguoiDung { get; set; }
 
         [Column("Username")]
@@ -19,20 +19,17 @@ namespace DONGHONUOC_API.Models
         [Column("HoTen")]
         public string HoTen { get; set; } = "";
 
-        [Column("SoDienThoai")]
+        [Column("DienThoai")]
         public string? SoDienThoai { get; set; }
 
-        [Column("Email")]
-        public string? Email { get; set; }
+        [Column("ChucVu")]
+        public string? VaiTro { get; set; }
 
-        [Column("VaiTro")]
-        public string VaiTro { get; set; } = "NhanVien";
+        [Column("Khoa")]
+        public bool? Khoa { get; set; }
 
-        [Column("MaKhuVuc")]
-        public string? MaKhuVuc { get; set; }
-
-        [Column("TrangThai")]
-        public bool TrangThai { get; set; } = true;
+        [NotMapped]
+        public bool TrangThai { get => !(Khoa ?? false); set { Khoa = !value; } }
 
         [Column("Avatar")]
         public string? Avatar { get; set; }

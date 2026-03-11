@@ -29,7 +29,7 @@ namespace DONGHONUOC_API.Controllers
             var user = await _db.NguoiDung
                 .FirstOrDefaultAsync(u => u.Username == request.Username
                                       && u.PasswordHash == hash
-                                      && u.TrangThai);
+                                      && u.Khoa != true);
 
             if (user == null)
             {
@@ -81,7 +81,7 @@ namespace DONGHONUOC_API.Controllers
         }
 
         /// <summary>
-        /// Đăng ký tài khoản mới
+        /// Đăng ký tài khoản mới (Có thể cấp luôn quyền Quản Lý nếu người tạo là Admin, mặc định là NhanVien)
         /// </summary>
         [HttpPost("register")]
         public async Task<ActionResult<LoginResponse>> Register([FromBody] RegisterRequest request)
@@ -97,26 +97,42 @@ namespace DONGHONUOC_API.Controllers
                 });
             }
 
+            // By default assign NhanVien, unless a specific Role (VaiTro) was requested
+            var assignedRole = !string.IsNullOrEmpty(request.VaiTro) ? request.VaiTro : "NhanVien"; 
+            
             var user = new NguoiDung
             {
                 Username = request.Username,
                 PasswordHash = HashPassword(request.Password),
                 HoTen = request.HoTen,
-                VaiTro = "NhanVien",
-                TrangThai = true
+                VaiTro = assignedRole,
+                Khoa = false
             };
 
-            _db.NguoiDung.Add(user);
-            await _db.SaveChangesAsync();
-
-            return Ok(new LoginResponse
+            try
             {
-                Success = true,
-                Message = "Đăng ký thành công!",
-                Username = user.Username,
-                HoTen = user.HoTen,
-                VaiTro = user.VaiTro
-            });
+                _db.NguoiDung.Add(user);
+                await _db.SaveChangesAsync();
+
+                return Ok(new LoginResponse
+                {
+                    Success = true,
+                    Message = "Đăng ký thành công!",
+                    Username = user.Username,
+                    HoTen = user.HoTen,
+                    VaiTro = user.VaiTro
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Register] ERROR: {ex.Message}");
+                if (ex.InnerException != null) Console.WriteLine($"[Register] Inner ERROR: {ex.InnerException.Message}");
+                return Ok(new LoginResponse
+                {
+                    Success = false,
+                    Message = "Lỗi hệ thống khi đăng ký tài khoản mới: " + ex.Message
+                });
+            }
         }
 
         private static string HashPassword(string password)
@@ -124,5 +140,57 @@ namespace DONGHONUOC_API.Controllers
             var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
             return Convert.ToHexStringLower(bytes);
         }
+
+        /// <summary>
+        /// Lấy danh sách toàn bộ người dùng (Dành cho Web Admin)
+        /// </summary>
+        [HttpGet("users")]
+        public async Task<ActionResult<IEnumerable<object>>> GetAllUsers()
+        {
+            var users = await _db.NguoiDung
+                .Select(u => new 
+                {
+                    u.Username,
+                    u.HoTen,
+                    u.VaiTro,
+                    u.Khoa
+                })
+                .ToListAsync();
+
+            return Ok(users);
+        }
+
+        /// <summary>
+        /// Cấp quyền / Đổi mật khẩu / Sửa thông tin tài khoản cho Admin
+        /// </summary>
+        [HttpPut("users/{username}")]
+        public async Task<ActionResult<bool>> UpdateUserAdmin(string username, [FromBody] UpdateUserAdminRequest request)
+        {
+            var user = await _db.NguoiDung.FirstOrDefaultAsync(u => u.Username == username);
+            if (user == null)
+            {
+                return NotFound("Không tìm thấy người dùng");
+            }
+
+            if (!string.IsNullOrEmpty(request.HoTen)) user.HoTen = request.HoTen;
+            if (!string.IsNullOrEmpty(request.VaiTro)) user.VaiTro = request.VaiTro;
+            if (request.Khoa.HasValue) user.Khoa = request.Khoa;
+            
+            if (!string.IsNullOrEmpty(request.Password)) 
+            {
+                user.PasswordHash = HashPassword(request.Password);
+            }
+
+            await _db.SaveChangesAsync();
+            return Ok(true);
+        }
+    }
+
+    public class UpdateUserAdminRequest 
+    {
+        public string? HoTen { get; set; }
+        public string? VaiTro { get; set; } // "QuanLy" hoặc "NhanVien"
+        public string? Password { get; set; }
+        public bool? Khoa { get; set; }
     }
 }

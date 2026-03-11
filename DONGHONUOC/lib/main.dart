@@ -562,9 +562,13 @@ class DanhSachKHScreen extends StatefulWidget {
 }
 
 class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
-  List<Map<String, dynamic>> _danhSachKH = [];
+  List<Map<String, dynamic>> _danhSachKH = []; // Trang hiện tại
   List<Map<String, dynamic>> _filteredList = [];
-  // int? _currentMaKyDoc; // Removed unused field
+
+  int _currentPage = 1;
+  static const int _pageSize = 50;
+  int? _maKyDocActive; // Kỳ đọc đang dùng
+  bool _isLoading = false;
 
   final TextEditingController _searchController = TextEditingController();
   bool _showSearch = false;
@@ -575,8 +579,6 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
 
   final List<String> _filters = [
     "Tất cả",
-    // "Chưa Đọc", // Removed
-    // "Đã Đọc",   // Removed
     "F",
     "6",
     "Bất Thường Tăng",
@@ -598,7 +600,8 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
     super.initState();
     _taiDuLieu();
     _searchController.addListener(() {
-      _applyFilter();
+      _currentPage = 1; // Reset về trang 1 khi search
+      _taiDuLieu();
     });
   }
 
@@ -609,97 +612,78 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
   }
 
   Future<void> _taiDuLieu() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
     try {
-      // 0. Chuẩn bị dữ liệu local để merge (giữ hình ảnh/trạng thái offline)
-      final localData = await DatabaseHelper().layDanhSach();
-      final Map<String, Map<String, dynamic>> localMap = {
-        for (var item in localData) item['ma_danh_bo'].toString(): item
-      };
-
-      List<Map<String, dynamic>> finalData = [];
-
-      // 1. Lấy danh sách kỳ đọc từ API
-      final kyDocList = await api.layDanhSachKyDoc();
-
-      if (kyDocList.isNotEmpty) {
-        // Duyệt qua các kỳ đọc để tìm kỳ có dữ liệu
+      // 1. Tìm kỳ đọc đang hoạt động (chỉ làm 1 lần)
+      if (_maKyDocActive == null) {
+        final kyDocList = await api.layDanhSachKyDoc();
         for (var ky in kyDocList) {
           final maKy = ky['MaKyDoc'] as int?;
           if (maKy == null) continue;
-
-          print('🔍 Checking KyDoc: $maKy');
-          final data = await api.layDanhSachDocSo(maKy);
-
-          if (data.isNotEmpty) {
-            print('✅ Found data in KyDoc: $maKy (${data.length} records)');
-            finalData = data;
-            break; // Found data, stop searching
+          // Kiểm tra xem kỳ này có dữ liệu không (lấy 1 phần tử)
+          final check =
+              await api.layDanhSachDocSo(maKy, pageNumber: 1, pageSize: 1);
+          if (check.isNotEmpty) {
+            _maKyDocActive = maKy;
+            break;
           }
         }
       }
 
-      // 2. Fallback: Nếu API không có dữ liệu đọc số, lấy danh sách khách hàng gốc
-      if (finalData.isEmpty) {
-        print('⚠️ No data found in any KyDoc, loading from KhachHang table');
-        finalData = await api.layDanhSach();
-        // Inject MaKyDoc từ kỳ mới nhất
-        if (kyDocList.isNotEmpty) {
-          final latestMaKy = kyDocList.first['MaKyDoc'] as int?;
-          if (latestMaKy != null) {
-            for (var item in finalData) {
-              item['ma_ky_doc'] = latestMaKy;
-            }
-          }
-        }
+      List<Map<String, dynamic>> pageData = [];
+      final searchText = _searchController.text.trim();
+
+      if (searchText.isNotEmpty) {
+        // CÓ từ khoá: Tìm kiếm TOÀN BỘ kỳ đọc (không lọc theo kỳ)
+        pageData = await api.timKiemToAnBo(searchText,
+            pageNumber: _currentPage, pageSize: _pageSize);
+      } else if (_maKyDocActive != null) {
+        // KHÔNG có từ khoá: Hiện danh sách kỳ hiện tại bình thường
+        pageData = await api.layDanhSachDocSo(
+          _maKyDocActive!,
+          pageNumber: _currentPage,
+          pageSize: _pageSize,
+        );
       }
 
-      // 3. MERGE LOCAL DATA (Quan trọng: Khôi phục hình ảnh/trạng thái đã lưu offline)
-      if (finalData.isNotEmpty) {
-        print(
-            '🔄 Merging local data (${localMap.length} records) into API result...');
-        for (var item in finalData) {
-          // Ensure strict string comparison and trim
+      // 2. Merge local (hình ảnh/trạng thái đã lưu tạm) cho đúng 50 dòng vừa lấy về
+      if (pageData.isNotEmpty) {
+        final localData = await DatabaseHelper().layDanhSach();
+        final localMap = {
+          for (var item in localData) item['ma_danh_bo'].toString(): item
+        };
+        for (var item in pageData) {
           final mdb = (item['ma_danh_bo']?.toString() ?? '').trim();
-
           if (localMap.containsKey(mdb)) {
             final local = localMap[mdb]!;
-
-            // DEBUG: Check specific customer
-            if (item['hinh_anh'] == null && local['hinh_anh'] != null) {
-              print(
-                  '📸 Restoring image for $mdb from local DB: ${local['hinh_anh']}');
-            }
-
-            // Nếu local có hình ảnh, ghi đè vào data hiển thị
             if (local['hinh_anh'] != null &&
                 local['hinh_anh'].toString().isNotEmpty) {
               item['hinh_anh'] = local['hinh_anh'];
-              item['imagePath'] =
-                  local['hinh_anh']; // Đảm bảo tương thích cả 2 key
-
-              // Nếu trạng thái local là đã đọc (1), cập nhật luôn
-              if (local['trang_thai'] == 1) {
-                item['trang_thai'] = 1;
-                item['chi_so_moi'] = local['chi_so_moi'];
-                item['code'] = local['code'];
-              }
+              item['imagePath'] = local['hinh_anh'];
+            }
+            if (local['trang_thai'] == 1) {
+              item['trang_thai'] = 1;
+              item['chi_so_moi'] = local['chi_so_moi'];
+              item['code'] = local['code'];
             }
           }
         }
       }
 
       setState(() {
-        _danhSachKH = finalData;
+        _danhSachKH = pageData;
+        _filteredList = pageData;
       });
-      _applyFilter();
     } catch (e) {
-      print('❌ Lỗi tải dữ liệu: $e');
-      // Fallback hoàn toàn về local nếu lỗi mạng
+      print('❌ Lỗi tải dữ liệu trang $_currentPage: $e');
       final localData = await DatabaseHelper().layDanhSach();
       setState(() {
-        _danhSachKH = localData;
-        _filteredList = List.from(localData);
+        _danhSachKH = localData.take(_pageSize).toList();
+        _filteredList = _danhSachKH;
       });
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -1312,7 +1296,7 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Text("Tổng: ${_filteredList.length}",
+                Text("Trang: $_currentPage",
                     style: const TextStyle(fontWeight: FontWeight.bold)),
                 Text("Đã đọc: $daDocCount",
                     style: const TextStyle(color: Colors.green)),
@@ -1490,6 +1474,77 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
                   ),
                 );
               },
+            ),
+          ),
+          // ====== THANH PHÂN TRANG ======
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: Colors.grey[200]!)),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 4,
+                    offset: const Offset(0, -1))
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Nút trang trước
+                ElevatedButton.icon(
+                  onPressed: _currentPage > 1 && !_isLoading
+                      ? () {
+                          setState(() => _currentPage--);
+                          _taiDuLieu();
+                        }
+                      : null,
+                  icon: const Icon(Icons.arrow_back_ios, size: 14),
+                  label: const Text('Trước'),
+                  style: ElevatedButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    textStyle: const TextStyle(fontSize: 13),
+                  ),
+                ),
+                // Trạng thái trang
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text(
+                            'Trang $_currentPage',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                    Text(
+                      'Hiện: ${_filteredList.length} người',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+                // Nút trang sau
+                ElevatedButton.icon(
+                  onPressed: _filteredList.length >= _pageSize && !_isLoading
+                      ? () {
+                          setState(() => _currentPage++);
+                          _taiDuLieu();
+                        }
+                      : null,
+                  icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                  label: const Text('Tiếp'),
+                  style: ElevatedButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    textStyle: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1828,8 +1883,11 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
       }
       _history = []; // Clear history temporarily while loading
 
-      // Load saved values or defaults
+      // Load saved values or defaults. Ensure code is valid for Dropdown.
       _selectedCode = kh['code']?.toString() ?? '40';
+      if (!['40', 'F', '6', '10', '20'].contains(_selectedCode)) {
+        _selectedCode = '40';
+      }
       if (kh['ghi_chu'] != null) {
         _ghiChuController.text = kh['ghi_chu'].toString();
       } else {

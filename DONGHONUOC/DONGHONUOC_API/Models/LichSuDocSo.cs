@@ -8,7 +8,7 @@ namespace DONGHONUOC_API.Models
     {
         [Key]
         [Column("ID")]
-        public long ID { get; set; }
+        public int ID { get; set; }
 
         [Column("MaDanhBo")]
         public string MaDanhBo { get; set; } = "";

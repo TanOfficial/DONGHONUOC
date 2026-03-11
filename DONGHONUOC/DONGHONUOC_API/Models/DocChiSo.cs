@@ -3,57 +3,83 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DONGHONUOC_API.Models
 {
-    [Table("DocChiSo")]
+    [Table("DocSo")]
     public class DocChiSo
     {
         [Key]
-        [Column("ID")]
-        public long ID { get; set; }
+        [Column("DocSoID")]
+        public string ID { get; set; } = "";
 
-        [Column("MaDanhBo")]
+        [Column("DanhBa")]
         public string MaDanhBo { get; set; } = "";
 
-        [Column("MaKyDoc")]
-        public int MaKyDoc { get; set; }
+        [Column("Nam")]
+        public int? Nam { get; set; }
 
-        [Column("ChiSoCu")]
-        public int ChiSoCu { get; set; }
+        [Column("Ky")]
+        public string? Ky { get; set; }
 
-        [Column("ChiSoMoi")]
+        [Column("CSCu")]
+        public int? ChiSoCu { get; set; }
+
+        [Column("CSMoi")]
         public int? ChiSoMoi { get; set; }
 
-        [Column("TieuThu")]
-        [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
+        [Column("TieuThuMoi")]
         public int? TieuThu { get; set; }
 
-        [Column("MaCode")]
-        public string MaCode { get; set; } = "40";
+        [Column("CodeMoi")]
+        public string? MaCode { get; set; } = "40";
 
         [Column("TBTT")]
-        public int TBTT { get; set; }
-
-        [Column("LoaiBatThuong")]
-        public string? LoaiBatThuong { get; set; }
+        public int? TBTT { get; set; }
 
         [Column("HinhAnh")]
         public string? HinhAnh { get; set; }
 
-        [Column("GhiChu")]
+        [Column("GhiChuDS")]
         public string? GhiChu { get; set; }
 
-        [Column("TinhTrang")]
-        public string? TinhTrang { get; set; }
+        [Column("TrangThai_API")]
+        public int? TrangThai { get; set; }
 
-        [Column("TrangThai")]
-        public int TrangThai { get; set; }
-
-        [Column("NgayDoc")]
+        [Column("GIOGHI")]
         public DateTime? NgayDoc { get; set; }
 
-        [Column("NguoiDoc")]
+        [Column("NVGHI")]
         public string? NguoiDoc { get; set; }
+        
+        // KhachHang mapping
+        [NotMapped] // Old schema: [Column("HoTen")]
+        public string? TenKhachHang { get; set; }
 
-        // Navigation
-        public KhachHang? KhachHang { get; set; }
+        [Column("SoNhaMoi")]
+        public string? DiaChi { get; set; }
+
+        [Column("SDT")]
+        public string? SoDienThoaiKH { get; set; }
+
+        [Column("GB")]
+        public string? GB { get; set; }
+
+        [Column("DM")]
+        public string? DM { get; set; }
+
+        [Column("Dot")]
+        public string? MaLoTrinh { get; set; }
+        [Column("HieuMoi")]
+        public string? Hieu { get; set; }
+
+        [Column("CoMoi")]
+        public string? Co { get; set; }
+
+        [Column("SoThanMoi")]
+        public string? SoThan { get; set; }
+
+        [Column("ViTriMoi")]
+        public string? ViTri { get; set; }
+
+        [Column("DMHN")]
+        public int? DMHN { get; set; }
     }
 }

@@ -12,6 +12,7 @@ namespace DONGHONUOC_API.Models
         public string Username { get; set; } = "";
         public string Password { get; set; } = "";
         public string HoTen { get; set; } = "";
+        public string? VaiTro { get; set; }
     }
 
     public class GhiChiSoRequest
@@ -106,8 +107,8 @@ namespace DONGHONUOC_API.Models
         public string? SoThan { get; set; }
         public string? ViTri { get; set; }
         public string? SoDienThoai { get; set; }
-        public int? GB { get; set; }
-        public int? DM { get; set; }
+        public string? GB { get; set; }
+        public string? DM { get; set; }
         public int? DMHN { get; set; }
 
         // Thông tin đọc số

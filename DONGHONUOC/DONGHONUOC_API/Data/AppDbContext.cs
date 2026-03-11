@@ -7,7 +7,6 @@ namespace DONGHONUOC_API.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        public DbSet<KhachHang> KhachHang { get; set; }
         public DbSet<DocChiSo> DocChiSo { get; set; }
         public DbSet<NguoiDung> NguoiDung { get; set; }
         public DbSet<KyDoc> KyDoc { get; set; }
@@ -17,21 +16,7 @@ namespace DONGHONUOC_API.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // DocChiSo - computed column TieuThu
-            modelBuilder.Entity<DocChiSo>()
-                .Property(d => d.TieuThu)
-                .HasComputedColumnSql(null); // Let SQL Server handle it
-
-            // DocChiSo -> KhachHang relationship
-            modelBuilder.Entity<DocChiSo>()
-                .HasOne(d => d.KhachHang)
-                .WithMany()
-                .HasForeignKey(d => d.MaDanhBo);
-
-            // Unique constraint: 1 khách hàng chỉ đọc 1 lần/kỳ
-            modelBuilder.Entity<DocChiSo>()
-                .HasIndex(d => new { d.MaDanhBo, d.MaKyDoc })
-                .IsUnique();
+            // DocSoID is primary key, no complex configs needed since we mapped directly
         }
     }
 }

@@ -18,7 +18,12 @@ builder.Services.AddSwaggerGen(c =>
 
 // Database connection
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlServerOptionsAction: sqlOptions =>
+        {
+            sqlOptions.CommandTimeout(300); // Tăng timeout lên 5 phút (300 giây)
+        }
+    ));
 
 // CORS - cho phép Flutter app kết nối
 builder.Services.AddCors(options =>

@@ -12,7 +12,22 @@ class ApiService {
   // ⚠️ THAY ĐỔI IP NÀY THÀNH IP MÁY TÍNH CỦA BẠN
   // Chạy `ipconfig` trong CMD để lấy IPv4 Address
   // Ví dụ: 192.168.1.100
-  static const String _baseUrl = 'http://192.168.1.189:5000/api';
+  static String _baseUrl = 'http://192.168.1.106:5000/api';
+
+  void setBaseUrl(String ip) {
+    if (ip.isNotEmpty) {
+      _baseUrl = 'http://$ip:5000/api';
+    }
+  }
+
+  String get currentIp {
+    try {
+      final uri = Uri.parse(_baseUrl);
+      return uri.host;
+    } catch (e) {
+      return '192.168.1.106';
+    }
+  }
 
   String? _currentUsername;
 
@@ -37,10 +52,10 @@ class ApiService {
         if (data['Success'] == true) {
           _currentUsername = username;
           return {
-            'username': data['Username'],
-            'fullname': data['HoTen'],
-            'vaiTro': data['VaiTro'],
-            'avatar': data['Avatar'], // Thêm avatar
+            'username': data['Username'] ?? data['username'],
+            'fullname': data['HoTen'] ?? data['hoTen'],
+            'vaiTro': data['VaiTro'] ?? data['vaiTro'],
+            'avatar': data['Avatar'] ?? data['avatar'], // Thêm avatar
           };
         }
       }
@@ -133,32 +148,54 @@ class ApiService {
 
   // ====== ĐỌC CHỈ SỐ ======
 
-  /// Lấy danh sách đọc số theo kỳ
+  /// Lấy danh sách đọc số theo kỳ (Phân trang thực tế từ UI)
   Future<List<Map<String, dynamic>>> layDanhSachDocSo(int maKyDoc,
-      {int? trangThai, String? search}) async {
+      {int? trangThai,
+      String? search,
+      int pageNumber = 1,
+      int pageSize = 50}) async {
     try {
       var url = '$_baseUrl/docchiso/ky/$maKyDoc';
-      var params = <String>[];
+      var params = <String>['pageNumber=$pageNumber', 'pageSize=$pageSize'];
       if (trangThai != null) params.add('trangThai=$trangThai');
       if (search != null && search.isNotEmpty) {
         params.add('search=${Uri.encodeComponent(search)}');
       }
-      if (params.isNotEmpty) url += '?${params.join('&')}';
+      url += '?${params.join('&')}';
 
       print('🌐 GET $url');
       final response = await http.get(Uri.parse(url));
-      print(
-          '🌐 Status: ${response.statusCode}, Body length: ${response.body.length}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        print('🌐 DocChiSo parsed: ${data.length} items');
+        print('🌐 DocChiSo parsed: ${data.length} items (Trang $pageNumber)');
         return data.map((item) => _convertDocSoItem(item)).toList();
+      } else {
+        print('🌐 DocChiSo failed: ${response.body}');
+        return [];
       }
-      print('🌐 DocChiSo failed: ${response.body}');
-      return [];
     } catch (e) {
       print('❌ Lỗi lấy danh sách đọc số: $e');
+      return [];
+    }
+  }
+
+  /// Tìm khách hàng theo Mã Danh Bộ hoặc Địa Chỉ trên TOÀN BỘ kỳ đọc (không lọc theo kỳ)
+  Future<List<Map<String, dynamic>>> timKiemToAnBo(String q,
+      {int pageNumber = 1, int pageSize = 50}) async {
+    try {
+      final url =
+          '$_baseUrl/docchiso/search?q=${Uri.encodeComponent(q)}&pageNumber=$pageNumber&pageSize=$pageSize';
+      print('🔍 Tìm kiếm toàn bộ: $url');
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        print('🔍 Kết quả: ${data.length} người');
+        return data.map((item) => _convertDocSoItem(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('❌ Lỗi tìm kiếm: $e');
       return [];
     }
   }
@@ -313,12 +350,12 @@ class ApiService {
         final List<dynamic> data = jsonDecode(response.body);
         return data
             .map((item) => <String, dynamic>{
-                  'ky': item['Ky'],
-                  'nam': item['Nam'],
-                  'chi_so': item['ChiSo'] ?? 0,
-                  'tieu_thu': item['TieuThu'] ?? 0,
-                  'code': item['MaCode'] ?? '40',
-                  'ngay_doc': item['NgayDoc'],
+                  'ky': item['Ky'] ?? item['ky'],
+                  'nam': item['Nam'] ?? item['nam'],
+                  'chi_so': item['ChiSo'] ?? item['chiSo'] ?? 0,
+                  'tieu_thu': item['TieuThu'] ?? item['tieuThu'] ?? 0,
+                  'code': item['MaCode'] ?? item['maCode'] ?? '40',
+                  'ngay_doc': item['NgayDoc'] ?? item['ngayDoc'],
                 })
             .toList();
       }
@@ -366,52 +403,52 @@ class ApiService {
   /// Convert API response thành format tương thích với code cũ
   Map<String, dynamic> _convertKhachHang(Map<String, dynamic> item) {
     return {
-      'ma_danh_bo': item['MaDanhBo'],
-      'ten_kh': item['HoTen'],
-      'dia_chi': item['DiaChi'],
-      'chi_so_cu': item['ChiSo'] ?? 0, // Fallback: Use base ChiSo
-      'chi_so_moi': item['ChiSo'] ?? 0, // Fallback: New index starts at base
+      'ma_danh_bo': item['MaDanhBo'] ?? item['maDanhBo'],
+      'ten_kh': item['HoTen'] ?? item['hoTen'],
+      'dia_chi': item['DiaChi'] ?? item['diaChi'],
+      'chi_so_cu': item['ChiSo'] ?? item['chiSo'] ?? 0,
+      'chi_so_moi': item['ChiSo'] ?? item['chiSo'] ?? 0,
       'trang_thai': 0,
-      'ma_lo_trinh': item['MaLoTrinh'],
-      'hieu': item['Hieu'],
-      'co': item['Co'],
-      'so_than': item['SoThan'],
-      'vi_tri': item['ViTri'],
-      'gb': item['GB'],
-      'dm': item['DM'],
-      'dmhn': item['DMHN'],
-      'sdt': item['SoDienThoai'],
-      'ghi_chu': item['GhiChu'],
+      'ma_lo_trinh': item['MaLoTrinh'] ?? item['maLoTrinh'],
+      'hieu': item['Hieu'] ?? item['hieu'],
+      'co': item['Co'] ?? item['co'],
+      'so_than': item['SoThan'] ?? item['soThan'],
+      'vi_tri': item['ViTri'] ?? item['viTri'],
+      'gb': item['GB'] ?? item['gb'],
+      'dm': item['DM'] ?? item['dm'],
+      'dmhn': item['DMHN'] ?? item['dmhn'],
+      'sdt': item['SoDienThoai'] ?? item['soDienThoai'],
+      'ghi_chu': item['GhiChu'] ?? item['ghiChu'],
     };
   }
 
   /// Convert DocSoItem response thành format tương thích
   Map<String, dynamic> _convertDocSoItem(Map<String, dynamic> item) {
     return {
-      'ma_danh_bo': item['MaDanhBo'],
-      'ten_kh': item['HoTen'],
-      'dia_chi': item['DiaChi'],
-      'dia_chi_dhn': item['DiaChiDHN'],
-      'ma_lo_trinh': item['MaLoTrinh'],
-      'hieu': item['Hieu'],
-      'co': item['Co'],
-      'so_than': item['SoThan'],
-      'vi_tri': item['ViTri'],
-      'sdt': item['SoDienThoai'],
-      'gb': item['GB'],
-      'dm': item['DM'],
-      'dmhn': item['DMHN'],
-      'doc_chi_so_id': item['DocChiSoId'],
-      'ma_ky_doc': item['MaKyDoc'],
-      'chi_so_cu': item['ChiSoCu'] ?? 0,
-      'chi_so_moi': item['ChiSoMoi'] ?? 0,
-      'tieu_thu': item['TieuThu'] ?? 0,
-      'code': item['MaCode'] ?? '40',
-      'tbtt': item['TBTT'] ?? 0,
-      'trang_thai': item['TrangThai'] ?? 0,
-      'ghi_chu': item['GhiChu'],
-      'tinh_trang': item['TinhTrang'],
-      'hinh_anh': item['HinhAnh'],
+      'ma_danh_bo': item['MaDanhBo'] ?? item['maDanhBo'],
+      'ten_kh': item['HoTen'] ?? item['hoTen'],
+      'dia_chi': item['DiaChi'] ?? item['diaChi'],
+      'dia_chi_dhn': item['DiaChiDHN'] ?? item['diaChiDHN'],
+      'ma_lo_trinh': item['MaLoTrinh'] ?? item['maLoTrinh'],
+      'hieu': item['Hieu'] ?? item['hieu'],
+      'co': item['Co'] ?? item['co'],
+      'so_than': item['SoThan'] ?? item['soThan'],
+      'vi_tri': item['ViTri'] ?? item['viTri'],
+      'sdt': item['SoDienThoai'] ?? item['soDienThoai'],
+      'gb': item['GB'] ?? item['gb'],
+      'dm': item['DM'] ?? item['dm'],
+      'dmhn': item['DMHN'] ?? item['dmhn'],
+      'doc_chi_so_id': item['DocChiSoId'] ?? item['docChiSoId'],
+      'ma_ky_doc': item['MaKyDoc'] ?? item['maKyDoc'],
+      'chi_so_cu': item['ChiSoCu'] ?? item['chiSoCu'] ?? 0,
+      'chi_so_moi': item['ChiSoMoi'] ?? item['chiSoMoi'],
+      'tieu_thu': item['TieuThu'] ?? item['tieuThu'] ?? 0,
+      'code': item['MaCode'] ?? item['maCode'] ?? '40',
+      'tbtt': item['TBTT'] ?? item['tbtt'] ?? 0,
+      'trang_thai': item['TrangThai'] ?? item['trangThai'] ?? 0,
+      'ghi_chu': item['GhiChu'] ?? item['ghiChu'],
+      'tinh_trang': item['TinhTrang'] ?? item['tinhTrang'],
+      'hinh_anh': item['HinhAnh'] ?? item['hinhAnh'],
     };
   }
 }
