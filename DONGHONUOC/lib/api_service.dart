@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service kết nối Flutter App với ASP.NET Core API
 /// Thay thế DatabaseHelper (SQLite) bằng HTTP calls
@@ -12,11 +13,27 @@ class ApiService {
   // ⚠️ THAY ĐỔI IP NÀY THÀNH IP MÁY TÍNH CỦA BẠN
   // Chạy `ipconfig` trong CMD để lấy IPv4 Address
   // Ví dụ: 192.168.1.100
-  static String _baseUrl = 'http://192.168.1.106:5000/api';
+  static String _baseUrl = 'http://192.168.2.102:5000/api';
+  static const String _ipKey = 'api_ip';
 
-  void setBaseUrl(String ip) {
+  /// Khởi tạo và tải IP đã lưu
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedIp = prefs.getString(_ipKey);
+    if (savedIp != null && savedIp.isNotEmpty) {
+      _baseUrl = 'http://$savedIp:5000/api';
+      print('🌐 ApiService initialized with saved IP: $savedIp');
+    } else {
+      print('🌐 ApiService initialized with default IP');
+    }
+  }
+
+  Future<void> setBaseUrl(String ip) async {
     if (ip.isNotEmpty) {
       _baseUrl = 'http://$ip:5000/api';
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_ipKey, ip);
+      print('🌐 API Base URL updated and saved: $_baseUrl');
     }
   }
 
@@ -25,7 +42,7 @@ class ApiService {
       final uri = Uri.parse(_baseUrl);
       return uri.host;
     } catch (e) {
-      return '192.168.1.106';
+      return '192.168.2.102';
     }
   }
 

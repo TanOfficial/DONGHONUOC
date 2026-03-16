@@ -20,13 +20,20 @@ final api = ApiService();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Khởi tạo API Service (tải IP đã lưu)
+  await api.init();
+
   if (Platform.isWindows || Platform.isLinux) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
 
-  runApp(const MaterialApp(
-    home: LoginScreen(),
+  runApp(MaterialApp(
+    theme: ThemeData(
+      useMaterial3: true,
+      colorSchemeSeed: Colors.blue,
+    ),
+    home: const LoginScreen(),
     debugShowCheckedModeBanner: false,
   ));
 }
@@ -219,9 +226,68 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(color: Colors.blue[700]),
                 ),
               ),
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: _showIpSettings,
+                icon: const Icon(Icons.settings, size: 16),
+                label: const Text("Cấu hình Server IP"),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.grey[600],
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showIpSettings() {
+    final controller = TextEditingController(text: api.currentIp);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cấu hình Server IP'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Nhập địa chỉ IPv4 của máy tính chạy API (vídụ: 192.168.1.100)',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'IP Address',
+                border: OutlineInputBorder(),
+                hintText: '192.168.x.x',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newIp = controller.text.trim();
+              if (newIp.isNotEmpty) {
+                await api.setBaseUrl(newIp);
+                if (mounted) {
+                  Navigator.pop(context);
+                  UIHelper.showCustomSnackBar(context,
+                      message: "Đã cập nhật IP: $newIp", isSuccess: true);
+                }
+              }
+            },
+            child: const Text('Lưu'),
+          ),
+        ],
       ),
     );
   }
@@ -376,7 +442,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Đọc Số"),
-        backgroundColor: const Color(0xFF5C6BC0),
+        backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -434,12 +500,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w500,
-                      color: Color(0xFF8BC34A))),
+                      color: Colors.blue)),
               Text(widget.fullname,
                   style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF8BC34A))),
+                      color: Colors.blue)),
               const SizedBox(height: 24),
               // Avatar with camera icon
               GestureDetector(
@@ -450,8 +516,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       width: 120,
                       height: 120,
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2196F3),
+                      decoration: const BoxDecoration(
+                        color: Colors.blue,
                         shape: BoxShape.circle,
                       ),
                       child: _buildAvatarWidget(_avatarPath),
@@ -465,13 +531,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                              color: const Color(0xFF2196F3), width: 2),
+                          border: Border.all(color: Colors.blue, width: 2),
                         ),
                         child: const Icon(
                           Icons.camera_alt,
                           size: 20,
-                          color: Color(0xFF2196F3),
+                          color: Colors.blue,
                         ),
                       ),
                     ),
@@ -702,7 +767,13 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
                 children: [
                   DropdownButtonFormField<String>(
                     value: tempFilter,
-                    decoration: const InputDecoration(labelText: "Lọc"),
+                    decoration: const InputDecoration(
+                      labelText: "Lọc",
+                      labelStyle: TextStyle(color: Colors.blue),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.blue),
+                      ),
+                    ),
                     items: _filters
                         .map((f) => DropdownMenuItem(value: f, child: Text(f)))
                         .toList(),
@@ -710,7 +781,13 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
                   ),
                   DropdownButtonFormField<String>(
                     value: tempSort,
-                    decoration: const InputDecoration(labelText: "Sắp xếp"),
+                    decoration: const InputDecoration(
+                      labelText: "Sắp xếp",
+                      labelStyle: TextStyle(color: Colors.blue),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.blue),
+                      ),
+                    ),
                     items: _sorts
                         .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                         .toList(),
@@ -721,7 +798,8 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text("Hủy")),
+                    child: const Text("Hủy",
+                        style: TextStyle(color: Colors.blue))),
                 ElevatedButton(
                   onPressed: () {
                     setState(() {
@@ -731,6 +809,9 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
                     _applyFilter();
                     Navigator.pop(context);
                   },
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white),
                   child: const Text("Áp dụng"),
                 ),
               ],
@@ -1270,9 +1351,13 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
                 controller: _searchController,
                 autofocus: true,
                 decoration: const InputDecoration(
-                    hintText: "Tìm tên, mã, địa chỉ...",
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder()),
+                  hintText: "Tìm tên, mã, địa chỉ...",
+                  prefixIcon: Icon(Icons.search, color: Colors.blue),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                  ),
+                  border: OutlineInputBorder(),
+                ),
               ),
             ),
           // Filter Toggle Row
@@ -1503,6 +1588,8 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
                   icon: const Icon(Icons.arrow_back_ios, size: 14),
                   label: const Text('Trước'),
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     textStyle: const TextStyle(fontSize: 13),
@@ -1539,6 +1626,8 @@ class _DanhSachKHScreenState extends State<DanhSachKHScreen> {
                   icon: const Icon(Icons.arrow_forward_ios, size: 14),
                   label: const Text('Tiếp'),
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     textStyle: const TextStyle(fontSize: 13),
@@ -2677,20 +2766,6 @@ class _GhiNuocScreenState extends State<GhiNuocScreen> {
                                                   result['imagePath'];
                                             }
                                           });
-
-                                          // 2. Async Auto-save (outside setState)
-                                          if (result['imagePath'] != null) {
-                                            final maKyDoc = kh['ma_ky_doc']
-                                                    is int
-                                                ? kh['ma_ky_doc']
-                                                : int.tryParse(kh['ma_ky_doc']
-                                                        .toString()) ??
-                                                    0;
-                                            await api.capNhatHinhAnh(
-                                                kh['ma_danh_bo'],
-                                                maKyDoc,
-                                                result['imagePath']);
-                                          }
                                         }
                                       },
                                       child: Container(

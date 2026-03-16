@@ -125,4 +125,43 @@ namespace DONGHONUOC_API.Models
         public string? HinhAnh { get; set; }
         public DateTime? NgayDoc { get; set; }
     }
+
+    // ====== DTO cho thống kê theo Đợt ======
+    public class ThongKeDotResponse
+    {
+        public string MaDot { get; set; } = "";
+        public int TongHDKyTruoc { get; set; }
+        public int TongBD { get; set; }
+        public int TongTD { get; set; }
+        public string? NgayLapBD { get; set; }
+        public string? NgayLapTD { get; set; }
+    }
+
+    // ====== DTO cho Chi Tiết Đợt ======
+    public class ChiTietDotResponse
+    {
+        public int Dot { get; set; }
+        public string NgayDoc { get; set; } = "";
+        public string NgayKiemSoat { get; set; } = "";
+        public string NgayChuyenListing { get; set; } = "";
+        public string NgayThuTien { get; set; } = "";
+        public bool KiemTraNgayDoc { get; set; }
+    }
+
+    // ====== Internal model cho parse File Biến Động ======
+    public class BienDongRow
+    {
+        public string MaDanhBo { get; set; } = "";
+        public string? DiaChi { get; set; }
+        public int CSCu { get; set; }
+        public string MaCode { get; set; } = "40";
+        public string? MaDot { get; set; }
+        public string? Hieu { get; set; }
+        public string? Co { get; set; }
+        public string? SoThan { get; set; }
+        public string? ViTri { get; set; }
+        public string? GB { get; set; }
+        public string? DM { get; set; }
+        public string? SDT { get; set; }
+    }
 }

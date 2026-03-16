@@ -299,6 +299,10 @@ function TaoDuLieuTab() {
     const [data, setData] = useState([]);
     const [thongKe, setThongKe] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [uploading, setUploading] = useState(false);
+    const [uploadMsg, setUploadMsg] = useState('');
+    const fileInputRef = React.useRef(null);
 
     useEffect(() => {
         const fetchKys = async () => {
@@ -322,7 +326,7 @@ function TaoDuLieuTab() {
         setThongKe(null);
         try {
             const [dataRes, thongKeRes] = await Promise.all([
-                axios.get(`${API_BASE_URL}/DocChiSo/ky/${selectedKyDocId}`),
+                axios.get(`${API_BASE_URL}/DocChiSo/thongke-dot/${selectedKyDocId}`),
                 axios.get(`${API_BASE_URL}/DocChiSo/thongke/${selectedKyDocId}`)
             ]);
             setData(dataRes.data);
@@ -335,23 +339,78 @@ function TaoDuLieuTab() {
         }
     };
 
+    const handleChonFile = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (e) => {
+        const f = e.target.files[0];
+        if (f) {
+            setSelectedFile(f);
+            setUploadMsg(`Đã chọn: ${f.name}`);
+        }
+    };
+
+    const handleThemFile = async () => {
+        if (!selectedFile) return alert('Vui lòng chọn file trước!');
+        if (!selectedKyDocId) return alert('Vui lòng chọn kỳ đọc!');
+
+        setUploading(true);
+        setUploadMsg('');
+        try {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('maKyDoc', selectedKyDocId);
+            const res = await axios.post(`${API_BASE_URL}/DocChiSo/upload-bien-dong`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setUploadMsg(`✅ ${res.data.message}`);
+            setSelectedFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            // Tải lại dữ liệu sau khi import
+            await handleXem();
+        } catch (err) {
+            const msg = err.response?.data || err.message;
+            setUploadMsg(`❌ Lỗi: ${msg}`);
+            console.error('Upload error:', err);
+        } finally {
+            setUploading(false);
+        }
+    };
+
     return (
         <div className="flex flex-col h-full gap-4">
             {/* Path selection section */}
-            <div className="flex items-center gap-3 w-full max-w-4xl">
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileChange} />
+            <div className="flex items-center gap-3 w-full">
                 <label className="font-medium text-gray-700 whitespace-nowrap w-24">Đường Dẫn:</label>
                 <input
                     type="text"
-                    className="flex-1 border border-gray-300 rounded px-3 py-1.5 focus:outline-none focus:border-blue-500 bg-gray-50"
+                    value={selectedFile ? selectedFile.name : ''}
+                    placeholder="Chưa chọn file..."
+                    className="flex-1 border border-gray-300 rounded px-3 py-1.5 focus:outline-none focus:border-blue-500 bg-gray-50 text-gray-600"
                     readOnly
                 />
-                <button className="bg-white border text-gray-700 px-4 py-1.5 rounded hover:bg-[#8BC34A] hover:text-white hover:border-[#8BC34A] shadow-sm transition-colors whitespace-nowrap border-[#8BC34A] font-medium text-[#7cb342]">
+                <button onClick={handleChonFile} className="bg-white border text-gray-700 px-4 py-1.5 rounded hover:bg-[#8BC34A] hover:text-white hover:border-[#8BC34A] shadow-sm transition-colors whitespace-nowrap border-[#8BC34A] font-medium text-[#7cb342]">
                     Chọn File Biến Động
                 </button>
-                <button className="bg-[#2196F3] border border-[#1e88e5] text-white px-4 py-1.5 rounded hover:bg-[#1976D2] shadow-sm transition-colors whitespace-nowrap font-medium">
-                    Thêm File Biến Động
+                <button
+                    onClick={handleThemFile}
+                    disabled={uploading || !selectedFile}
+                    className={`px-4 py-1.5 rounded shadow-sm transition-colors whitespace-nowrap font-medium border ${uploading || !selectedFile
+                        ? 'bg-gray-200 border-gray-300 text-gray-400 cursor-not-allowed'
+                        : 'bg-[#2196F3] border-[#1e88e5] text-white hover:bg-[#1976D2]'
+                        }`}
+                >
+                    {uploading ? 'Đang import...' : 'Thêm File Biến Động'}
                 </button>
             </div>
+            {uploadMsg && (
+                <div className={`text-sm font-medium px-3 py-1.5 rounded ${uploadMsg.startsWith('✅') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}>
+                    {uploadMsg}
+                </div>
+            )}
 
             {/* Group Box: Thông Tin Hóa Đơn */}
             <fieldset className="border border-gray-300 rounded-md p-4 flex-1 flex flex-col gap-4 relative mt-2">
@@ -391,37 +450,40 @@ function TaoDuLieuTab() {
                         <table className="w-full text-left border-collapse whitespace-nowrap">
                             <thead className="bg-gray-100 sticky top-0 shadow-sm z-10 border-b border-gray-300">
                                 <tr>
-                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700 w-24">Lộ Trình</th>
-                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700 w-32">Danh Bộ</th>
-                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700 min-w-[150px]">Địa Chỉ</th>
-                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700 w-20 text-right">CS Cũ</th>
-                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700 w-20 text-right">CS Mới</th>
-                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700 w-20 text-right">Tiêu Thụ</th>
-                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700 w-20 text-center">Code</th>
-                                    <th className="px-3 py-2 font-medium text-gray-700 text-center">Trạng Thái</th>
+                                    <th className="w-6 border-r border-gray-300 bg-gray-200"></th>
+                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700 w-16 text-center">Đợt</th>
+                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700 w-28 text-right">Tổng HĐ Kỳ Trước</th>
+                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700 w-24 text-right">Tổng BĐ</th>
+                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700 w-24 text-right">Tổng TĐ</th>
+                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700">Ngày Lập BĐ</th>
+                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700">Ngày Lập TĐ</th>
+                                    <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700 w-24 text-center">Tạo Đợt</th>
+                                    <th className="px-3 py-2 font-medium text-gray-700 w-24 text-center">Chỉ Số Nền</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                {loading && (
+                                    <tr><td colSpan="9" className="text-center py-6 text-gray-500">Đang tải...</td></tr>
+                                )}
                                 {data.map((row, index) => (
-                                    <tr key={index} className="border-b border-gray-200 hover:bg-[#f1f8e9] transition-colors">
-                                        <td className="border-r border-gray-200 px-3 py-1.5 text-gray-600">{row.maLoTrinh}</td>
-                                        <td className="border-r border-gray-200 px-3 py-1.5 font-medium text-[#2196F3]">{row.maDanhBo}</td>
-                                        <td className="border-r border-gray-200 px-3 py-1.5 text-gray-600 truncate max-w-xs" title={row.diaChi}>{row.diaChi}</td>
-                                        <td className="border-r border-gray-200 px-3 py-1.5 text-right font-medium">{row.chiSoCu}</td>
-                                        <td className="border-r border-gray-200 px-3 py-1.5 text-right font-medium text-blue-600">{row.chiSoMoi ?? '-'}</td>
-                                        <td className="border-r border-gray-200 px-3 py-1.5 text-right font-medium text-green-600">{row.tieuThu ?? '-'}</td>
-                                        <td className="border-r border-gray-200 px-3 py-1.5 text-center">{row.maCode}</td>
+                                    <tr key={index} className={`border-b border-gray-200 hover:bg-[#e3f2fd] transition-colors cursor-pointer`}>
+                                        <td className="border-r border-gray-200 bg-gray-100 text-center text-gray-400 text-xs w-6">{index === 0 ? '▶' : ''}</td>
+                                        <td className="border-r border-gray-200 px-3 py-1.5 text-center font-bold text-[#2196F3]">{row.maDot}</td>
+                                        <td className="border-r border-gray-200 px-3 py-1.5 text-right font-medium">{row.tongHDKyTruoc?.toLocaleString()}</td>
+                                        <td className="border-r border-gray-200 px-3 py-1.5 text-right font-medium">{row.tongBD?.toLocaleString()}</td>
+                                        <td className="border-r border-gray-200 px-3 py-1.5 text-right font-medium text-blue-600">{row.tongTD?.toLocaleString()}</td>
+                                        <td className="border-r border-gray-200 px-3 py-1.5 text-gray-600 text-sm">{row.ngayLapBD ?? '-'}</td>
+                                        <td className="border-r border-gray-200 px-3 py-1.5 text-gray-600 text-sm">{row.ngayLapTD ?? '-'}</td>
+                                        <td className="border-r border-gray-200 px-3 py-1.5 text-center">
+                                            <button className="text-xs bg-white border border-[#2196F3] text-[#2196F3] px-2 py-0.5 rounded hover:bg-[#e3f2fd] transition-colors">Tạo Đợt</button>
+                                        </td>
                                         <td className="px-3 py-1.5 text-center">
-                                            <span className={`px-2 py-0.5 rounded text-xs shrink-0 font-medium ${row.trangThai >= 1 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                                                {row.trangThai >= 1 ? 'Đã đọc' : 'Chưa đọc'}
-                                            </span>
+                                            <button className="text-xs bg-white border border-[#8BC34A] text-[#7cb342] px-2 py-0.5 rounded hover:bg-[#f1f8e9] transition-colors">Kiểm Tra</button>
                                         </td>
                                     </tr>
                                 ))}
                                 {data.length === 0 && !loading && (
-                                    <tr>
-                                        <td colSpan="8" className="text-center py-6 text-gray-500">Chưa có dữ liệu. Hãy chọn kỳ và nhấn "Xem Dữ Liệu".</td>
-                                    </tr>
+                                    <tr><td colSpan="9" className="text-center py-6 text-gray-500">Chưa có dữ liệu. Hãy chọn kỳ và nhấn "Xem Dữ Liệu".</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -429,11 +491,12 @@ function TaoDuLieuTab() {
 
                     {/* Footer Totals */}
                     {thongKe && (
-                        <div className="bg-gray-50 border-t border-gray-300 px-3 py-2 flex items-center font-bold text-sm">
-                            <div className="flex-1 text-right px-3 text-gray-600">Tổng Tiêu Thụ Toàn Kỳ:</div>
-                            <div className="w-24 text-right px-3 text-red-600">{thongKe.tongTieuThu}</div>
-                            <div className="w-20"></div>
-                            <div className="w-32"></div>
+                        <div className="bg-gray-50 border-t border-gray-300 px-3 py-2 flex items-center font-bold text-sm gap-4">
+                            <div className="w-6"></div>
+                            <div className="w-16"></div>
+                            <div className="w-28 text-right text-gray-700">{thongKe.tongSo?.toLocaleString()}</div>
+                            <div className="w-24 text-right text-gray-700">{thongKe.tongSo?.toLocaleString()}</div>
+                            <div className="w-24 text-right text-blue-600">{thongKe.tongSo?.toLocaleString()}</div>
                         </div>
                     )}
                 </div>
@@ -450,6 +513,22 @@ function LichDocSoTab() {
     const [formData, setFormData] = useState({ id: null, ky: '', nam: new Date().getFullYear(), tuNgay: '', denNgay: '' });
     const [loading, setLoading] = useState(false);
     const [selectedKy, setSelectedKy] = useState(null);
+    const [chiTietDot, setChiTietDot] = useState([]);
+    const [dotLoading, setDotLoading] = useState(false);
+
+    const fetchChiTietDot = async (maKyDoc) => {
+        if (!maKyDoc) return;
+        setDotLoading(true);
+        try {
+            const res = await axios.get(`${API_BASE_URL}/DocChiSo/dot/${maKyDoc}`);
+            setChiTietDot(res.data);
+        } catch (err) {
+            console.error('Lỗi tải chi tiết đợt:', err);
+            setChiTietDot([]);
+        } finally {
+            setDotLoading(false);
+        }
+    };
 
     const fetchKyDocs = async () => {
         setLoading(true);
@@ -457,7 +536,6 @@ function LichDocSoTab() {
             const response = await axios.get(`${API_BASE_URL}/DocChiSo/kydoc`);
             setDsKyList(response.data);
             if (response.data.length > 0) {
-                setSelectedKy(response.data[0]);
                 handleSelect(response.data[0]);
             }
         } catch (error) {
@@ -473,13 +551,15 @@ function LichDocSoTab() {
 
     const handleSelect = (kyDoc) => {
         setSelectedKy(kyDoc);
+        const id = kyDoc.MaKyDoc || kyDoc.maKyDoc;
         setFormData({
-            id: kyDoc.MaKyDoc || kyDoc.maKyDoc,
+            id,
             ky: kyDoc.Ky || kyDoc.ky,
             nam: kyDoc.Nam || kyDoc.nam,
             tuNgay: kyDoc.TuNgay || kyDoc.tuNgay ? (kyDoc.TuNgay || kyDoc.tuNgay).substring(0, 10) : '',
             denNgay: kyDoc.DenNgay || kyDoc.denNgay ? (kyDoc.DenNgay || kyDoc.denNgay).substring(0, 10) : ''
         });
+        fetchChiTietDot(id);
     };
 
     const handleAdd = async () => {
@@ -525,21 +605,13 @@ function LichDocSoTab() {
             await axios.delete(`${API_BASE_URL}/DocChiSo/kydoc/${formData.id}`);
             alert("Xóa thành công!");
             setFormData({ id: null, ky: '', nam: new Date().getFullYear(), tuNgay: '', denNgay: '' });
+            setChiTietDot([]);
             fetchKyDocs();
         } catch (error) {
             console.error(error);
             alert("Lỗi khi xóa: " + (error.response?.data || error.message));
         }
     };
-
-    const chiTietDot = Array.from({ length: 15 }, (_, i) => ({
-        dot: i + 1,
-        ngayDoc: formData.tuNgay || `2/${(i % 28) + 1}/2026`,
-        ngayKiemSoat: formData.tuNgay || `2/${(i % 28) + 1}/2026`,
-        ngayChuyen: formData.denNgay || `2/${((i + 1) % 28) + 1}/2026`,
-        ngayThuTien: formData.denNgay || `2/${((i + 2) % 28) + 1}/2026`,
-        kiemTraNgayDoc: true
-    }));
 
     return (
         <div className="flex h-full gap-4">
@@ -627,13 +699,19 @@ function LichDocSoTab() {
                             </tr>
                         </thead>
                         <tbody>
-                            {chiTietDot.map((row, idx) => (
+                            {dotLoading && (
+                                <tr><td colSpan="7" className="text-center py-4 text-gray-500">Đang tải...</td></tr>
+                            )}
+                            {!dotLoading && chiTietDot.length === 0 && (
+                                <tr><td colSpan="7" className="text-center py-4 text-gray-400">Chọn một kỳ để xem chi tiết đợt</td></tr>
+                            )}
+                            {!dotLoading && chiTietDot.map((row, idx) => (
                                 <tr key={idx} className="border-b border-gray-200 hover:bg-[#e3f2fd] transition-colors">
                                     <td className="border-r border-gray-200 bg-gray-100 text-center text-gray-400 text-xs"></td>
-                                    <td className="border-r border-gray-200 px-3 py-1.5 text-center">{row.dot}</td>
+                                    <td className="border-r border-gray-200 px-3 py-1.5 text-center font-medium">{row.dot}</td>
                                     <td className="border-r border-gray-200 px-3 py-1.5 text-gray-700">{row.ngayDoc}</td>
                                     <td className="border-r border-gray-200 px-3 py-1.5 text-gray-700">{row.ngayKiemSoat}</td>
-                                    <td className="border-r border-gray-200 px-3 py-1.5 text-gray-700">{row.ngayChuyen}</td>
+                                    <td className="border-r border-gray-200 px-3 py-1.5 text-gray-700">{row.ngayChuyenListing}</td>
                                     <td className="border-r border-gray-200 px-3 py-1.5 text-gray-700">{row.ngayThuTien}</td>
                                     <td className="p-1 px-3 text-center">
                                         <input type="checkbox" defaultChecked={row.kiemTraNgayDoc} className="w-4 h-4 text-[#2196F3] rounded cursor-pointer accent-[#2196F3]" />

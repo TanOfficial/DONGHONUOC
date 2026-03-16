@@ -1,0 +1,288 @@
+console.log('🚀 API SERVICE LOADED');
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// In a real app, this would be in a .env file
+// 10.0.2.2 = address emulator uses to reach host machine's localhost
+// Change to your real IP (e.g. 192.168.2.102) when testing on physical device
+const DEFAULT_IP = '10.0.2.2';
+const PORT = '5000';
+const TIMEOUT_MS = 10000; // 10 seconds
+
+class ApiService {
+    private static instance: ApiService;
+    private baseUrl: string = `http://${DEFAULT_IP}:${PORT}/api`;
+    private currentUsername: string | null = null;
+
+    private constructor() {
+        this.loadBaseUrl();
+    }
+
+    public static getInstance(): ApiService {
+        if (!ApiService.instance) {
+            ApiService.instance = new ApiService();
+        }
+        return ApiService.instance;
+    }
+
+    private async loadBaseUrl() {
+        const savedIp = await AsyncStorage.getItem('server_ip');
+        if (savedIp) {
+            this.baseUrl = `http://${savedIp}:${PORT}/api`;
+        }
+    }
+
+    public async setBaseUrl(ip: string) {
+        if (ip) {
+            this.baseUrl = `http://${ip}:${PORT}/api`;
+            await AsyncStorage.setItem('server_ip', ip);
+        }
+    }
+
+    public setUsername(username: string | null) {
+        this.currentUsername = username;
+    }
+
+    // ====== AUTH ======
+
+    public async dangNhap(username: string, pass: string) {
+        try {
+            const response = await axios.post(`${this.baseUrl}/auth/login`, {
+                Username: username,
+                Password: pass
+            }, { timeout: TIMEOUT_MS });
+
+            if (response.status === 200 && response.data.Success) {
+                this.currentUsername = username;
+                return {
+                    username: response.data.Username || response.data.username,
+                    fullname: response.data.HoTen || response.data.hoTen,
+                    vaiTro: response.data.VaiTro || response.data.vaiTro,
+                    avatar: response.data.Avatar || response.data.avatar,
+                };
+            }
+            return null;
+        } catch (e: any) {
+            if (e.code === 'ECONNABORTED') {
+                console.error('❌ Login timeout - API không phản hồi!');
+            } else {
+                console.error('❌ Lỗi đăng nhập:', e.message);
+            }
+            return null;
+        }
+    }
+
+    public async dangKy(username: string, pass: string, fullname: string) {
+        try {
+            const response = await axios.post(`${this.baseUrl}/auth/register`, {
+                Username: username,
+                Password: pass,
+                HoTen: fullname
+            }, { timeout: TIMEOUT_MS });
+            return response.status === 200 && response.data.Success;
+        } catch (e) {
+            console.error('❌ Lỗi đăng ký:', e);
+            return false;
+        }
+    }
+
+    public async updateAvatar(username: string, base64Image: string) {
+        try {
+            const response = await axios.post(`${this.baseUrl}/auth/avatar`, {
+                Username: username,
+                AvatarBase64: base64Image
+            });
+            return response.status === 200;
+        } catch (e) {
+            console.error('❌ Lỗi cập nhật avatar:', e);
+            return false;
+        }
+    }
+
+    // ====== KHÁCH HÀNG ======
+
+    public async demTongKhach() {
+        try {
+            const response = await axios.get(`${this.baseUrl}/khachhang/count`);
+            return typeof response.data === 'number' ? response.data : parseInt(response.data) || 0;
+        } catch (e) {
+            console.error('❌ Lỗi đếm khách:', e);
+            return 0;
+        }
+    }
+
+    // ====== ĐỌC CHỈ SỐ ======
+
+    public async layDanhSachDocSo(maKyDoc: number, pageNumber = 1, pageSize = 50, search = '', trangThai?: number) {
+        try {
+            let url = `${this.baseUrl}/docchiso/ky/${maKyDoc}?pageNumber=${pageNumber}&pageSize=${pageSize}`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (trangThai !== undefined) url += `&trangThai=${trangThai}`;
+
+            console.log('🌐 Calling API:', url);
+            const response = await axios.get(url);
+            if (response.status === 200) {
+                return response.data.map((item: any) => this.convertDocSoItem(item));
+            }
+            return [];
+        } catch (e: any) {
+            if (e.response) {
+                console.error('❌ Lỗi API (400?):', e.response.status, e.response.data);
+            } else {
+                console.error('❌ Lỗi lấy danh sách đọc số:', e.message || e);
+            }
+            return [];
+        }
+    }
+
+    public async timKiemToAnBo(q: string, pageNumber = 1, pageSize = 50) {
+        try {
+            const url = `${this.baseUrl}/docchiso/search?q=${encodeURIComponent(q)}&pageNumber=${pageNumber}&pageSize=${pageSize}`;
+            const response = await axios.get(url);
+            if (response.status === 200) {
+                return response.data.map((item: any) => this.convertDocSoItem(item));
+            }
+            return [];
+        } catch (e) {
+            console.error('❌ Lỗi tìm kiếm:', e);
+            return [];
+        }
+    }
+
+    public async ghiChiSo(maDanhBo: string, maKyDoc: number, chiSoMoi: number, code = '40', ghiChu = '', hinhAnhBase64?: string) {
+        try {
+            const response = await axios.post(`${this.baseUrl}/docchiso/ghi`, {
+                MaDanhBo: maDanhBo,
+                MaKyDoc: maKyDoc,
+                ChiSoMoi: chiSoMoi,
+                MaCode: code,
+                GhiChu: ghiChu,
+                NguoiDoc: this.currentUsername,
+                HinhAnh: hinhAnhBase64
+            });
+            return response.status === 200;
+        } catch (e) {
+            console.error('❌ Lỗi ghi chỉ số:', e);
+            return false;
+        }
+    }
+
+    public async huyDocSo(maDanhBo: string, maKyDoc: number) {
+        try {
+            const response = await axios.put(`${this.baseUrl}/docchiso/reset`, {
+                MaDanhBo: maDanhBo,
+                MaKyDoc: maKyDoc
+            });
+            return response.status === 200;
+        } catch (e) {
+            console.error('❌ Lỗi hủy đọc số:', e);
+            return false;
+        }
+    }
+
+    public async capNhatCode(maDanhBo: string, maKyDoc: number, code: string) {
+        try {
+            await axios.put(`${this.baseUrl}/docchiso/code`, {
+                MaDanhBo: maDanhBo,
+                MaKyDoc: maKyDoc,
+                MaCode: code
+            });
+        } catch (e) {
+            console.error('❌ Lỗi cập nhật code:', e);
+        }
+    }
+
+    public async capNhatGhiChu(maDanhBo: string, maKyDoc: number, ghiChu: string) {
+        try {
+            await axios.put(`${this.baseUrl}/docchiso/note`, {
+                MaDanhBo: maDanhBo,
+                MaKyDoc: maKyDoc,
+                GhiChu: ghiChu
+            });
+        } catch (e) {
+            console.error('❌ Lỗi cập nhật ghi chú:', e);
+        }
+    }
+
+    public async capNhatHinhAnh(maDanhBo: string, maKyDoc: number, hinhAnhBase64: string) {
+        try {
+            await axios.put(`${this.baseUrl}/docchiso/image`, {
+                MaDanhBo: maDanhBo,
+                MaKyDoc: maKyDoc,
+                HinhAnh: hinhAnhBase64
+            });
+        } catch (e) {
+            console.error('❌ Lỗi cập nhật hình ảnh:', e);
+        }
+    }
+
+    public async layLichSuDoc(maDanhBo: string, limit = 3) {
+        try {
+            const response = await axios.get(`${this.baseUrl}/docchiso/lichsu/${maDanhBo}?limit=${limit}`);
+            if (response.status === 200) {
+                return response.data.map((item: any) => ({
+                    ky: item.Ky || item.ky,
+                    nam: item.Nam || item.nam,
+                    chi_so: item.ChiSo || item.chiSo || 0,
+                    tieu_thu: item.TieuThu || item.tieuThu || 0,
+                    code: item.MaCode || item.maCode || '40',
+                    ngay_doc: item.NgayDoc || item.ngayDoc,
+                }));
+            }
+            return [];
+        } catch (e) {
+            console.error('❌ Lỗi lấy lịch sử:', e);
+            return [];
+        }
+    }
+
+    public async layDanhSachKyDoc() {
+        try {
+            const response = await axios.get(`${this.baseUrl}/docchiso/kydoc`);
+            return response.data;
+        } catch (e) {
+            console.error('❌ Lỗi lấy kỳ đọc:', e);
+            return [];
+        }
+    }
+
+    public async thongKe(maKyDoc: number) {
+        try {
+            const response = await axios.get(`${this.baseUrl}/docchiso/thongke/${maKyDoc}`);
+            return response.data;
+        } catch (e) {
+            console.error('❌ Lỗi thống kê:', e);
+            return null;
+        }
+    }
+
+    private convertDocSoItem(item: any) {
+        return {
+            ma_danh_bo: item.MaDanhBo || item.maDanhBo,
+            ten_kh: item.HoTen || item.hoTen,
+            dia_chi: item.DiaChi || item.diaChi,
+            dia_chi_dhn: item.DiaChiDHN || item.diaChiDHN,
+            ma_lo_trinh: item.MaLoTrinh || item.maLoTrinh,
+            hieu: item.Hieu || item.hieu,
+            co: item.Co || item.co,
+            so_than: item.SoThan || item.soThan,
+            vi_tri: item.ViTri || item.viTri,
+            sdt: item.SoDienThoai || item.soDienThoai,
+            gb: item.GB || item.gb,
+            dm: item.DM || item.dm,
+            dmhn: item.DMHN || item.dmhn,
+            doc_chi_so_id: item.DocChiSoId || item.docChiSoId,
+            ma_ky_doc: item.MaKyDoc || item.maKyDoc,
+            chi_so_cu: item.ChiSoCu ?? item.chiSoCu ?? 0,
+            chi_so_moi: item.ChiSoMoi ?? item.chiSoMoi,
+            tieu_thu: item.TieuThu ?? item.tieuThu ?? 0,
+            code: item.MaCode || item.maCode || '40',
+            tbtt: item.TBTT ?? item.tbtt ?? 0,
+            trang_thai: item.TrangThai ?? item.trangThai ?? 0,
+            ghi_chu: item.GhiChu || item.ghiChu,
+            hinh_anh: item.HinhAnh || item.hinhAnh,
+        };
+    }
+}
+
+export default ApiService.getInstance();
