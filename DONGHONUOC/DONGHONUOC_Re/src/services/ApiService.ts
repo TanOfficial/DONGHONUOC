@@ -4,8 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // In a real app, this would be in a .env file
 // 10.0.2.2 = address emulator uses to reach host machine's localhost
-// Change to your real IP (e.g. 192.168.2.102) when testing on physical device
-const DEFAULT_IP = '10.0.2.2';
+// Using detected local IP for physical device (iPhone/Android) connectivity
+const DEFAULT_IP = '192.168.2.102';
 const PORT = '5000';
 const TIMEOUT_MS = 10000; // 10 seconds
 
@@ -26,16 +26,24 @@ class ApiService {
     }
 
     private async loadBaseUrl() {
-        const savedIp = await AsyncStorage.getItem('server_ip');
-        if (savedIp) {
-            this.baseUrl = `http://${savedIp}:${PORT}/api`;
+        const savedUrlOrIp = await AsyncStorage.getItem('server_ip');
+        if (savedUrlOrIp) {
+            if (savedUrlOrIp.startsWith('http')) {
+                this.baseUrl = savedUrlOrIp.endsWith('/') ? `${savedUrlOrIp}api` : `${savedUrlOrIp}/api`;
+            } else {
+                this.baseUrl = `http://${savedUrlOrIp}:${PORT}/api`;
+            }
         }
     }
 
-    public async setBaseUrl(ip: string) {
-        if (ip) {
-            this.baseUrl = `http://${ip}:${PORT}/api`;
-            await AsyncStorage.setItem('server_ip', ip);
+    public async setBaseUrl(value: string) {
+        if (value) {
+            if (value.startsWith('http')) {
+                this.baseUrl = value.endsWith('/') ? `${value}api` : `${value}/api`;
+            } else {
+                this.baseUrl = `http://${value}:${PORT}/api`;
+            }
+            await AsyncStorage.setItem('server_ip', value);
         }
     }
 
@@ -114,6 +122,10 @@ class ApiService {
     // ====== ĐỌC CHỈ SỐ ======
 
     public async layDanhSachDocSo(maKyDoc: number, pageNumber = 1, pageSize = 50, search = '', trangThai?: number) {
+        if (!maKyDoc || maKyDoc <= 0) {
+            console.warn('⚠️ layDanhSachDocSo: maKyDoc is invalid:', maKyDoc);
+            return [];
+        }
         try {
             let url = `${this.baseUrl}/docchiso/ky/${maKyDoc}?pageNumber=${pageNumber}&pageSize=${pageSize}`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
@@ -131,6 +143,27 @@ class ApiService {
             } else {
                 console.error('❌ Lỗi lấy danh sách đọc số:', e.message || e);
             }
+            return [];
+        }
+    }
+
+    public async layToanBoDanhSachDocSo(maKyDoc: number, maLoTrinh?: string) {
+        if (!maKyDoc || maKyDoc <= 0) {
+            console.warn('⚠️ layToanBoDanhSachDocSo: maKyDoc is invalid:', maKyDoc);
+            return [];
+        }
+        try {
+            let url = `${this.baseUrl}/docchiso/ky/${maKyDoc}?pageSize=0`;
+            if (maLoTrinh) url += `&maLoTrinh=${encodeURIComponent(maLoTrinh)}`;
+
+            console.log('🌐 Calling Full Download API:', url);
+            const response = await axios.get(url);
+            if (response.status === 200) {
+                return response.data.map((item: any) => this.convertDocSoItem(item));
+            }
+            return [];
+        } catch (e) {
+            console.error('❌ Lỗi tải toàn bộ danh sách:', e);
             return [];
         }
     }
@@ -226,13 +259,38 @@ class ApiService {
                     chi_so: item.ChiSo || item.chiSo || 0,
                     tieu_thu: item.TieuThu || item.tieuThu || 0,
                     code: item.MaCode || item.maCode || '40',
-                    ngay_doc: item.NgayDoc || item.ngayDoc,
+                    ngay_doc: item.NgayDoc || item.ngayDoc
                 }));
             }
             return [];
         } catch (e) {
             console.error('❌ Lỗi lấy lịch sử:', e);
             return [];
+        }
+    }
+
+    public async layLichSuDocBulk(maDanhBos: string[], limit = 3) {
+        try {
+            if (!maDanhBos || maDanhBos.length === 0) return {};
+            const response = await axios.post(`${this.baseUrl}/docchiso/lichsu/bulk?limit=${limit}`, maDanhBos);
+            if (response.status === 200) {
+                const result: { [key: string]: any[] } = {};
+                Object.keys(response.data).forEach(mdb => {
+                    result[mdb] = response.data[mdb].map((item: any) => ({
+                        ky: item.Ky || item.ky,
+                        nam: item.Nam || item.nam,
+                        chi_so: item.ChiSo || item.chiSo || 0,
+                        tieu_thu: item.TieuThu || item.tieuThu || 0,
+                        code: item.MaCode || item.maCode || '40',
+                        ngay_doc: item.NgayDoc || item.ngayDoc
+                    }));
+                });
+                return result;
+            }
+            return {};
+        } catch (e) {
+            console.error('❌ Lỗi lấy lịch sử bulk:', e);
+            return {};
         }
     }
 

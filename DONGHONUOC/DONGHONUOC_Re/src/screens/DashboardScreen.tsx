@@ -32,7 +32,11 @@ const DashboardScreen = () => {
 
     const loadAvatar = async () => {
         const saved = await AsyncStorage.getItem('avatar_data');
-        if (saved) setAvatarBase64(saved);
+        if (saved) {
+            setAvatarBase64(saved);
+        } else if (user?.avatar) {
+            setAvatarBase64(user.avatar);
+        }
     };
 
     const loadStats = async () => {
@@ -111,10 +115,10 @@ const DashboardScreen = () => {
                 <View style={{ height: 40 }} />
 
                 {/* Greeting */}
-                <Text style={styles.greetingText}>Xin chào</Text>
+                <Text style={styles.greetingText}>Xin chào,</Text>
                 <Text style={styles.nameText}>{user?.fullname ?? user?.username}</Text>
 
-                <View style={{ height: 24 }} />
+                <View style={{ height: 20 }} />
 
                 {/* Avatar */}
                 <TouchableOpacity onPress={handlePickAvatar} style={styles.avatarWrapper}>
@@ -136,23 +140,27 @@ const DashboardScreen = () => {
 
                 <View style={{ height: 40 }} />
 
-                {/* Menu Buttons match Flutter 140x140 */}
+                {/* Menu Buttons - Modern Grid */}
                 <View style={styles.menuRow}>
                     <TouchableOpacity
                         style={styles.menuBtn}
                         onPress={() => navigation.navigate('DanhSachKH')}
                     >
-                        <Image source={require('../../assets/icon_nuoc.png')} style={styles.menuIcon} />
+                        <View style={[styles.iconBox, { backgroundColor: '#E3F2FD' }]}>
+                            <Ionicons name="speedometer" size={40} color="#2196F3" />
+                        </View>
                         <Text style={styles.menuBtnTxt}>Đọc Số</Text>
                     </TouchableOpacity>
 
                     <View style={{ width: 24 }} />
 
                     <TouchableOpacity
-                        style={[styles.menuBtn, { backgroundColor: '#F5F5F5' }]}
+                        style={styles.menuBtn}
                         onPress={() => Alert.alert('Thông báo', 'Chức năng đang được phát triển')}
                     >
-                        <Image source={require('../../assets/icon_quanly.png')} style={styles.menuIcon} />
+                        <View style={[styles.iconBox, { backgroundColor: '#F3E5F5' }]}>
+                            <Ionicons name="stats-chart" size={40} color="#9C27B0" />
+                        </View>
                         <Text style={styles.menuBtnTxt}>Quản Lý</Text>
                     </TouchableOpacity>
                 </View>
@@ -160,57 +168,105 @@ const DashboardScreen = () => {
                 <View style={{ flex: 1 }} />
 
                 {/* Footer status text */}
-                <Text style={styles.footerText}>Tổng số khách hàng: {totalCustomers}</Text>
+                <View style={styles.footer}>
+                    <Ionicons name="people-outline" size={16} color="#757575" style={{ marginRight: 6 }} />
+                    <Text style={styles.footerText}>Tổng số khách hàng: {totalCustomers}</Text>
+                </View>
+                <View style={{ height: 10 }} />
             </View>
         </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
+    container: { flex: 1, backgroundColor: '#2196F3' }, // Set background to match AppBar
     appBar: {
         backgroundColor: '#2196F3',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        height: 56,
+        paddingHorizontal: 20,
+        height: 60,
     },
-    appBarTitle: { fontSize: 20, color: 'white', fontWeight: 'bold' },
-    body: { flex: 1, alignItems: 'center', backgroundColor: 'white' },
-
-    greetingText: { fontSize: 28, fontWeight: '500', color: '#2196F3' },
-    nameText: { fontSize: 32, fontWeight: 'bold', color: '#2196F3' },
-
-    avatarWrapper: { position: 'relative', width: 120, height: 120 },
-    avatarCircle: {
-        width: 120, height: 120, borderRadius: 60,
-        backgroundColor: '#2196F3',
-        justifyContent: 'center', alignItems: 'center', overflow: 'hidden',
-    },
-    avatarImage: { width: 120, height: 120, borderRadius: 60 },
-    cameraIcon: {
-        position: 'absolute', bottom: 0, right: 0,
-        width: 36, height: 36, borderRadius: 18,
+    appBarTitle: { fontSize: 22, color: 'white', fontWeight: 'bold', letterSpacing: 0.5 },
+    body: {
+        flex: 1,
+        alignItems: 'center',
         backgroundColor: 'white',
-        borderWidth: 2, borderColor: '#2196F3',
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        width: '100%',
+    },
+
+    greetingText: { fontSize: 20, fontWeight: '400', color: '#616161', marginTop: 10 },
+    nameText: { fontSize: 28, fontWeight: 'bold', color: '#212121', marginBottom: 10 },
+
+    avatarWrapper: {
+        position: 'relative',
+        width: 130,
+        height: 130,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        elevation: 10,
+    },
+    avatarCircle: {
+        width: 130, height: 130, borderRadius: 65,
+        backgroundColor: '#E1F5FE',
+        justifyContent: 'center', alignItems: 'center',
+        overflow: 'hidden',
+        borderWidth: 4,
+        borderColor: 'white',
+    },
+    avatarImage: { width: 130, height: 130, borderRadius: 65 },
+    cameraIcon: {
+        position: 'absolute', bottom: 5, right: 5,
+        width: 40, height: 40, borderRadius: 20,
+        backgroundColor: 'white',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 5,
         justifyContent: 'center', alignItems: 'center',
     },
 
-    menuRow: { flexDirection: 'row', justifyContent: 'center' },
+    menuRow: { flexDirection: 'row', justifyContent: 'center', paddingHorizontal: 20 },
     menuBtn: {
-        width: 140, height: 140,
-        backgroundColor: '#EEEEEE',
-        borderRadius: 12,
+        width: 150, height: 160,
+        backgroundColor: 'white',
+        borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
         padding: 16,
+        // Shadow for premium feel
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 8,
     },
-    menuIcon: { width: 70, height: 70, resizeMode: 'contain' },
+    iconBox: {
+        width: 70, height: 70,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
     menuBtnTxt: {
-        fontSize: 16, fontWeight: 'bold', color: '#424242', marginTop: 8,
+        fontSize: 17, fontWeight: '700', color: '#424242',
     },
-    footerText: { fontSize: 14, color: '#757575', marginBottom: 16 },
+    footer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+        backgroundColor: '#F5F5F5',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+    },
+    footerText: { fontSize: 13, color: '#757575', fontWeight: '600' },
 });
 
 export default DashboardScreen;

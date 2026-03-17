@@ -28,6 +28,7 @@ class DatabaseHelper {
         hinh_anh TEXT,
         trang_thai INTEGER DEFAULT 0,
         ma_lo_trinh TEXT,
+        ma_ky_doc INTEGER,
         hieu TEXT,
         co TEXT,
         so_than TEXT,
@@ -61,6 +62,87 @@ class DatabaseHelper {
         FOREIGN KEY (ma_danh_bo) REFERENCES khach_hang(ma_danh_bo)
       );
     `);
+
+        // Migration for existing DB
+        try {
+            await this.db.execAsync('ALTER TABLE khach_hang ADD COLUMN ma_ky_doc INTEGER;');
+        } catch (e) {
+            // Already exists or ignore
+        }
+    }
+
+    public async luuDanhSachKhachHang(customers: any[], maKyDoc: number) {
+        if (!this.db) await this.init();
+        await this.db!.withTransactionAsync(async () => {
+            for (const c of customers) {
+                // Fetch existing to preserve name if current batch is missing it
+                const existing = await this.db!.getFirstAsync<any>(
+                    'SELECT ten_kh, dia_chi FROM khach_hang WHERE ma_danh_bo = ?',
+                    [c.ma_danh_bo]
+                );
+
+                const finalName = c.ten_kh || existing?.ten_kh || '';
+                const finalDiaChi = c.dia_chi || existing?.dia_chi || '';
+
+                await this.db!.runAsync(
+                    `INSERT OR REPLACE INTO khach_hang (
+                        ma_danh_bo, ten_kh, dia_chi, chi_so_cu, chi_so_moi, 
+                        trang_thai, ma_lo_trinh, ma_ky_doc, code, ghi_chu,
+                        hieu, co, so_than, vi_tri, gb, dm, dmhn, tbtt
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        c.ma_danh_bo, finalName, finalDiaChi, c.chi_so_cu, c.chi_so_moi || 0,
+                        c.trang_thai || 0, c.ma_lo_trinh, maKyDoc, c.code || '40', c.ghi_chu || '',
+                        c.hieu, c.co, c.so_than, c.vi_tri, c.gb, c.dm, c.dmhn, c.tbtt
+                    ]
+                );
+            }
+        });
+    }
+
+    public async layDanhSachTheoKy(maKyDoc: number) {
+        if (!this.db) await this.init();
+        return await this.db!.getAllAsync<any>(
+            'SELECT * FROM khach_hang WHERE ma_ky_doc = ? ORDER BY ma_lo_trinh ASC, ma_danh_bo ASC',
+            [maKyDoc]
+        );
+    }
+
+    public async importFromCSV(content: string) {
+        if (!this.db) await this.init();
+        // Simple CSV parser for now
+        const lines = content.split('\n');
+        if (lines.length <= 1) return 0;
+
+        let count = 0;
+        await this.db!.withTransactionAsync(async () => {
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                // Handle comma separated
+                const cols = line.split(',');
+                if (cols.length >= 4) {
+                    const ma_danh_bo = cols[0].trim();
+                    const ten_kh = cols[1].trim();
+                    const dia_chi = cols[2].trim();
+                    const chi_so_cu = parseInt(cols[3].trim()) || 0;
+
+                    // Update only if name/address provided
+                    await this.db!.runAsync(
+                        `INSERT INTO khach_hang (ma_danh_bo, ten_kh, dia_chi, chi_so_cu) 
+                         VALUES (?, ?, ?, ?)
+                         ON CONFLICT(ma_danh_bo) DO UPDATE SET 
+                            ten_kh = excluded.ten_kh,
+                            dia_chi = excluded.dia_chi,
+                            chi_so_cu = CASE WHEN excluded.chi_so_cu > 0 THEN excluded.chi_so_cu ELSE chi_so_cu END`,
+                        [ma_danh_bo, ten_kh, dia_chi, chi_so_cu]
+                    );
+                    count++;
+                }
+            }
+        });
+        return count;
     }
 
     // ====== AUTH ======

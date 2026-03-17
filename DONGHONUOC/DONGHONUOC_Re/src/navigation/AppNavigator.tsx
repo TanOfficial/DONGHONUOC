@@ -7,6 +7,8 @@ import DashboardScreen from '../screens/DashboardScreen';
 import DanhSachKHScreen from '../screens/DanhSachKHScreen';
 import GhiNuocScreen from '../screens/GhiNuocScreen';
 import CameraScreen from '../screens/CameraScreen';
+import { TouchableOpacity } from 'react-native'; // Added import
+import { Ionicons } from '@expo/vector-icons'; // Added import
 
 const Stack = createStackNavigator();
 
@@ -34,7 +36,24 @@ const AppNavigator = () => {
                     <>
                         <Stack.Screen name="Dashboard" component={DashboardScreen} initialParams={{ fullname: user.fullname }} />
                         <Stack.Screen name="DanhSachKH" component={DanhSachKHScreen} options={{ headerShown: false }} />
-                        <Stack.Screen name="GhiNuoc" component={GhiNuocScreen} options={{ headerShown: true, title: 'Ghi Chỉ Số', headerStyle: { backgroundColor: '#2196F3' }, headerTintColor: 'white' }} />
+                        <Stack.Screen
+                            name="GhiNuoc"
+                            component={GhiNuocScreen}
+                            options={({ navigation }) => ({
+                                headerShown: true,
+                                title: 'Ghi Chỉ Số',
+                                headerStyle: { backgroundColor: '#2196F3' },
+                                headerTintColor: 'white',
+                                headerLeft: () => (
+                                    <TouchableOpacity
+                                        onPress={() => navigation.goBack()}
+                                        style={{ marginLeft: 15, paddingRight: 20 }}
+                                    >
+                                        <Ionicons name="chevron-back" size={28} color="white" />
+                                    </TouchableOpacity>
+                                ),
+                            })}
+                        />
                         <Stack.Screen name="Camera" component={CameraScreen} options={{ headerShown: false }} />
                     </>
                 )}

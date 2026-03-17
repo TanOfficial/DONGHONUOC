@@ -63,6 +63,13 @@ const LoginScreen = () => {
                 const userData = await ApiService.dangNhap(username, password);
                 if (userData) {
                     UIHelper.showCustomSnackBar('Đăng nhập thành công!', false, true);
+                    // Persistent storage parity with Flutter
+                    await AsyncStorage.setItem('fullname', userData.fullname);
+                    if (userData.avatar) {
+                        await AsyncStorage.setItem('avatar_data', userData.avatar);
+                    } else {
+                        await AsyncStorage.removeItem('avatar_data');
+                    }
                     await login(userData);
                 } else {
                     UIHelper.showCustomSnackBar('Sai tài khoản hoặc mật khẩu!', true);
@@ -156,7 +163,7 @@ const LoginScreen = () => {
 
                         {!isLoginMode && (
                             <View style={styles.inputContainer}>
-                                <Ionicons name="badge-outline" size={24} color="#666" style={styles.inputIcon} />
+                                <Ionicons name="id-card-outline" size={24} color="#666" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
                                     placeholder="Họ và tên"

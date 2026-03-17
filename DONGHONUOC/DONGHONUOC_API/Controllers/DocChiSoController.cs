@@ -271,6 +271,38 @@ namespace DONGHONUOC_API.Controllers
             return result;
         }
 
+        [HttpPost("lichsu/bulk")]
+        public async Task<ActionResult<Dictionary<string, List<LichSuItem>>>> GetLichSuBulk([FromBody] List<string> maDanhBos, [FromQuery] int limit = 3)
+        {
+            var result = await (from ls in _db.LichSuDocSo
+                                join kd in _db.KyDoc on ls.MaKyDoc equals kd.MaKyDoc
+                                where maDanhBos.Contains(ls.MaDanhBo) && ls.HanhDong == "DocMoi"
+                                orderby ls.ThoiGian descending
+                                select new
+                                {
+                                    MaDanhBo = ls.MaDanhBo,
+                                    Item = new LichSuItem
+                                    {
+                                        Ky = kd.Ky,
+                                        Nam = kd.Nam,
+                                        ChiSo = ls.ChiSo,
+                                        TieuThu = ls.TieuThu,
+                                        MaCode = ls.MaCode,
+                                        NgayDoc = ls.ThoiGian
+                                    }
+                                })
+                               .ToListAsync();
+
+            var grouped = result
+                .GroupBy(x => x.MaDanhBo)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(x => x.Item).Take(limit).ToList()
+                );
+
+            return grouped;
+        }
+
         [HttpGet("kydoc")]
         public async Task<ActionResult<List<KyDoc>>> GetKyDoc()
         {

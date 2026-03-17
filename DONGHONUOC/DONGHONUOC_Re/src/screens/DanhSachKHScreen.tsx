@@ -9,6 +9,11 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import ApiService from '../services/ApiService';
+import UIHelper from '../helpers/UIHelper';
+import DatabaseHelper from '../helpers/DatabaseHelper';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import { Picker } from '@react-native-picker/picker';
 
 interface Customer {
     ma_danh_bo: string;
@@ -22,6 +27,15 @@ interface Customer {
     code: string;
     ma_ky_doc: number;
     ghi_chu?: string;
+    hinh_anh?: string;
+    hieu?: string;
+    co?: string;
+    so_than?: string;
+    sdt?: string;
+    gb?: string;
+    dm?: string;
+    dmhn?: number;
+    tbtt?: number;
     _abnormal?: string | null;
     _percent?: number;
 }
@@ -57,26 +71,62 @@ const DanhSachKHScreen = () => {
     const [dialogConfig, setDialogConfig] = useState<any>({});
     const [menuVisible, setMenuVisible] = useState(false);
 
+    // Download & CSV States
+    const [downloadDialogVisible, setDownloadDialogVisible] = useState(false);
+    const [kyDocList, setKyDocList] = useState<any[]>([]);
+    const [selectedTo, setSelectedTo] = useState('Tân Phú 1');
+    const [selectedMay, setSelectedMay] = useState('01');
+    const [selectedDot, setSelectedDot] = useState('01');
+    const [selectedNam, setSelectedNam] = useState(new Date().getFullYear().toString());
+
     const init = async () => {
+        if (loading) return;
+        setLoading(true);
         try {
-            console.log('🔄 Initializing DanhSachKHScreen...');
+            console.log('🔄 Initializing DanhSachKHScreen (Sync Flow)...');
             const kyDocs = await ApiService.layDanhSachKyDoc();
-            console.log('📋 kyDocs received:', JSON.stringify(kyDocs).substring(0, 100));
+            console.log('📋 kyDocs count:', kyDocs?.length);
+
             if (kyDocs && kyDocs.length > 0) {
-                const firstKy = kyDocs[0];
-                const kyId = firstKy.MaKyDoc ?? firstKy.maKyDoc ?? firstKy.ID ?? firstKy.id;
-                console.log('🎯 Detected MaKyDoc:', kyId);
-                if (kyId) {
-                    setMaKyDoc(kyId);
-                    fetchCustomers(kyId, 1, true);
-                } else {
-                    console.warn('⚠️ No kyId found in first element of kyDocs');
+                setKyDocList(kyDocs);
+                // Parity with Flutter: Find the first Ky that actually has data
+                let activeKyId = null;
+                console.log('🔍 Searching for active Ky with data...');
+
+                for (const ky of kyDocs) {
+                    const kid = ky.MaKyDoc ?? ky.maKyDoc ?? ky.ID ?? ky.id;
+                    if (!kid) continue;
+
+                    console.log(`🧪 Testing Ky ID: ${kid}...`);
+                    // Use small page size for testing existence
+                    const check = await ApiService.layDanhSachDocSo(kid, 1, 1);
+                    if (check && check.length > 0) {
+                        console.log(`🎯 Found active Ky with data: ${kid}`);
+                        activeKyId = kid;
+                        break;
+                    }
+                }
+
+                if (!activeKyId) {
+                    const firstKy = kyDocs[0];
+                    activeKyId = firstKy.MaKyDoc ?? firstKy.maKyDoc ?? firstKy.ID ?? firstKy.id;
+                    console.log(`⚠️ No Ky has data, falling back to first Ky: ${activeKyId}`);
+                }
+
+                if (activeKyId) {
+                    setMaKyDoc(activeKyId);
+                    // Explicitly call fetchCustomers to ensure immediate load
+                    await fetchCustomers(activeKyId, 1, true);
                 }
             } else {
-                console.warn('⚠️ kyDocs is empty or null');
+                console.warn('⚠️ No kyDocs returned from API');
             }
         } catch (e) {
             console.error('❌ Error during init:', e);
+            UIHelper.showCustomSnackBar('Không thể tải danh sách kỳ đọc', true);
+        } finally {
+            setLoading(false);
+            console.log('🏁 Initialization finished');
         }
     };
 
@@ -86,26 +136,88 @@ const DanhSachKHScreen = () => {
 
     const fetchCustomers = async (kyId: number, pageNum: number, reset = false) => {
         console.log('🔍 fetchCustomers trigger:', { kyId, pageNum, reset, currentMaKyDoc: maKyDoc });
-        if (!kyId || loading) {
-            console.log('🚫 fetchCustomers aborted: !kyId or loading');
-            return;
-        }
+        if (!kyId || loading) return;
         setLoading(true);
         try {
+            // 1. Fetch ALL local data for this Ky
+            const localData: any[] = await DatabaseHelper.layDanhSachTheoKy(kyId);
+            const isFullDownloaded = localData.length > 50;
+
             let data: Customer[] = [];
-            if (search.trim()) {
-                data = await ApiService.timKiemToAnBo(search, pageNum, 50);
+            let totalFiltered = 0;
+
+            if (isFullDownloaded) {
+                // LOCAL-FIRST: Perform search and basic status filtering against the full local set
+                console.log('⚡ Using Local-First filtering (Large dataset detected)');
+                let filtered = [...localData];
+
+                // Text Search
+                if (search.trim()) {
+                    const q = search.toLowerCase();
+                    filtered = filtered.filter(kh =>
+                        (kh.ten_kh || '').toLowerCase().includes(q) ||
+                        (kh.ma_danh_bo || '').toLowerCase().includes(q) ||
+                        (kh.dia_chi || '').toLowerCase().includes(q) ||
+                        (kh.ma_lo_trinh || '').toLowerCase().includes(q)
+                    );
+                }
+
+                // Status Toggle
+                if (filterStatus === 1) filtered = filtered.filter(kh => kh.trang_thai === 0);
+                if (filterStatus === 2) filtered = filtered.filter(kh => kh.trang_thai === 1);
+
+                totalFiltered = filtered.length;
+                // Slice for current page
+                data = filtered.slice((pageNum - 1) * 50, pageNum * 50);
+                setHasMore(totalFiltered > pageNum * 50);
             } else {
-                data = await ApiService.layDanhSachDocSo(kyId, pageNum, 50, '', filterStatus === 0 ? undefined : filterStatus - 1);
+                // API-FIRST (Standard behavior)
+                try {
+                    if (search.trim()) {
+                        data = await ApiService.timKiemToAnBo(search, pageNum, 50);
+                    } else {
+                        data = await ApiService.layDanhSachDocSo(kyId, pageNum, 50, '', filterStatus === 0 ? undefined : filterStatus - 1);
+                    }
+                } catch (apiErr) {
+                    console.warn('⚠️ API fetch failed:', apiErr);
+                }
+
+                // Merge Local -> Server (as before)
+                if (localData.length > 0) {
+                    if (data.length === 0) {
+                        data = localData.slice((pageNum - 1) * 50, pageNum * 50);
+                    } else {
+                        const localMap = new Map<string, any>(localData.map((l: any) => [l.ma_danh_bo.trim(), l]));
+                        data = data.map(serverItem => {
+                            const mdb = (serverItem.ma_danh_bo || '').trim();
+                            const local = localMap.get(mdb);
+                            if (local) {
+                                return {
+                                    ...serverItem,
+                                    chi_so_moi: local.chi_so_moi || serverItem.chi_so_moi,
+                                    trang_thai: local.trang_thai || serverItem.trang_thai,
+                                    hinh_anh: local.hinh_anh || serverItem.hinh_anh,
+                                    ghi_chu: local.ghi_chu || serverItem.ghi_chu,
+                                    code: local.code || serverItem.code,
+                                };
+                            }
+                            return serverItem;
+                        });
+                    }
+                }
+                setHasMore(data.length === 50);
             }
 
-            // Apply Local Filters (Parity with Flutter)
             let processed = [...data];
 
             // Handle Advanced Abnormality/Percentage Filters
             if (['Bất Thường Tăng', 'Bất Thường Giảm', '10%', '20%', '30%', '40%', '50%'].includes(filterType)) {
-                processed = await Promise.all(processed.map(async (c) => {
-                    const history = await ApiService.layLichSuDoc(c.ma_danh_bo, 3);
+                // Bulk fetch history for all visible customers to avoid 50 individual calls
+                const maDanhBos = processed.map(c => c.ma_danh_bo);
+                const historyMap = await ApiService.layLichSuDocBulk(maDanhBos, 3);
+
+                processed = processed.map((c) => {
+                    const history = historyMap[c.ma_danh_bo] || [];
                     if (history.length === 0) return { ...c, _abnormal: null };
 
                     const currentTT = (c.chi_so_moi || 0) - c.chi_so_cu;
@@ -122,17 +234,16 @@ const DanhSachKHScreen = () => {
                     }
 
                     return { ...c, _abnormal: type, _percent: percent };
-                })).then(results => {
-                    if (filterType === 'Bất Thường Tăng') return results.filter(r => r._abnormal === 'tang');
-                    if (filterType === 'Bất Thường Giảm') return results.filter(r => r._abnormal === 'giam');
-
-                    const pctMatch = filterType.match(/(\d+)%/);
-                    if (pctMatch) {
-                        const threshold = parseInt(pctMatch[1]);
-                        return results.filter(r => (r._percent || 0) >= threshold);
-                    }
-                    return results;
                 });
+
+                if (filterType === 'Bất Thường Tăng') {
+                    processed = processed.filter(c => c._abnormal === 'tang');
+                } else if (filterType === 'Bất Thường Giảm') {
+                    processed = processed.filter(c => c._abnormal === 'giam');
+                } else if (filterType.includes('%')) {
+                    const percentThreshold = parseInt(filterType);
+                    processed = processed.filter(c => (c._percent || 0) >= percentThreshold);
+                }
             } else if (filterType === 'F') {
                 processed = processed.filter(c => c.code === 'F');
             } else if (filterType === '6') {
@@ -264,6 +375,63 @@ const DanhSachKHScreen = () => {
     const daDocCount = customers.filter(c => c.trang_thai === 1).length;
     const chuaDocCount = customers.length - daDocCount;
 
+    const handleFullDownload = async () => {
+        if (!maKyDoc) {
+            UIHelper.showCustomSnackBar('Vui lòng chọn kỳ đọc trước', true);
+            return;
+        }
+        setDownloadDialogVisible(false);
+        setLoading(true);
+        try {
+            const filterInfo = `(Tổ: ${selectedTo}, Máy: ${selectedMay}, Đợt: ${selectedDot})`;
+            UIHelper.showCustomSnackBar(`Đang tải dữ liệu kỳ ${maKyDoc} ${filterInfo}...`, false);
+
+            // Replicate Flutter: Combine Tổ/Máy/Đợt if needed or just use Dot (maLoTrinh)
+            // For now, use selectedDot as maLoTrinh
+            const allData = await ApiService.layToanBoDanhSachDocSo(maKyDoc, selectedDot);
+
+            if (allData && allData.length > 0) {
+                await DatabaseHelper.luuDanhSachKhachHang(allData, maKyDoc);
+                UIHelper.showCustomSnackBar(`Đã tải và lưu ${allData.length} khách hàng!`, false, true);
+                fetchCustomers(maKyDoc, 1, true);
+            } else {
+                UIHelper.showCustomSnackBar('Không có dữ liệu cho bộ lọc này', true);
+            }
+        } catch (error) {
+            console.error('❌ Download error:', error);
+            UIHelper.showCustomSnackBar('Lỗi khi tải dữ liệu', true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleImportCSV = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: 'text/comma-separated-values',
+                copyToCacheDirectory: true,
+            });
+
+            if (result.canceled) return;
+
+            setLoading(true);
+            const content = await FileSystem.readAsStringAsync(result.assets[0].uri);
+            const count = await DatabaseHelper.importFromCSV(content);
+
+            if (count > 0) {
+                UIHelper.showCustomSnackBar(`Đã nạp thành công ${count} khách hàng từ CSV!`, false, true);
+                if (maKyDoc) fetchCustomers(maKyDoc, 1, true);
+            } else {
+                UIHelper.showCustomSnackBar('File CSV không đúng định dạng (Mã DB, Tên KH, Địa Chỉ, CS Cũ)', true);
+            }
+        } catch (error) {
+            console.error('❌ CSV Import error:', error);
+            UIHelper.showCustomSnackBar('Lỗi khi nạp file CSV', true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             {loading && (
@@ -285,9 +453,93 @@ const DanhSachKHScreen = () => {
                     { label: 'Import CSV', icon: 'document-attach', value: 'import', color: '#4CAF50' },
                     { label: 'Export CSV', icon: 'share', value: 'export', color: '#E91E63' },
                 ]}
-                onSelect={(val) => { setMenuVisible(false); Alert.alert('Thông báo', 'Tính năng đang được phát triển'); }}
+                onSelect={(val) => {
+                    setMenuVisible(false);
+                    if (val === 'download') {
+                        setDownloadDialogVisible(true);
+                    } else if (val === 'import') {
+                        handleImportCSV();
+                    } else {
+                        Alert.alert('Thông báo', 'Tính năng đang được phát triển');
+                    }
+                }}
                 onCancel={() => setMenuVisible(false)}
             />
+
+            <Modal visible={downloadDialogVisible} transparent animationType="fade" onRequestClose={() => setDownloadDialogVisible(false)}>
+                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center' }]}>
+                    <View style={[styles.modalCard, { borderRadius: 16, marginHorizontal: 20, elevation: 20, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '90%' }]}>
+                        <Text style={styles.modalTitle}>Tải Dữ Liệu Đọc Số</Text>
+
+                        <View style={styles.dlForm}>
+                            <View style={styles.dlRow}>
+                                <Text style={[styles.dlLabel, { width: 50 }]}>Tổ</Text>
+                                <View style={styles.dlPicker}>
+                                    <Picker selectedValue={selectedTo} onValueChange={v => setSelectedTo(v)} style={styles.picker} dropdownIconColor="#2196F3">
+                                        {['Tân Phú 1', 'Tân Phú 2', 'Tân Phú 3'].map(to => <Picker.Item key={to} label={to} value={to} style={{ fontSize: 14 }} />)}
+                                    </Picker>
+                                </View>
+                            </View>
+
+                            <View style={styles.dlRow}>
+                                <Text style={[styles.dlLabel, { width: 50 }]}>Máy</Text>
+                                <View style={styles.dlPicker}>
+                                    <Picker selectedValue={selectedMay} onValueChange={v => setSelectedMay(v)} style={styles.picker} dropdownIconColor="#2196F3">
+                                        {['01', '02', '03', '04'].map(m => <Picker.Item key={m} label={m} value={m} style={{ fontSize: 14 }} />)}
+                                    </Picker>
+                                </View>
+                            </View>
+
+                            <View style={styles.dlRow}>
+                                <View style={{ flex: 1, marginRight: 8 }}>
+                                    <Text style={styles.dlLabel}>Năm</Text>
+                                    <View style={styles.dlPicker}>
+                                        <Picker selectedValue={selectedNam} onValueChange={v => setSelectedNam(v)} style={styles.picker} dropdownIconColor="#2196F3">
+                                            {['2024', '2025', '2026'].map(y => <Picker.Item key={y} label={y} value={y} style={{ fontSize: 14 }} />)}
+                                        </Picker>
+                                    </View>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.dlLabel}>Kỳ</Text>
+                                    <View style={styles.dlPicker}>
+                                        <Picker selectedValue={maKyDoc?.toString()} onValueChange={v => setMaKyDoc(parseInt(v))} style={styles.picker} dropdownIconColor="#2196F3">
+                                            {kyDocList
+                                                .filter(k => (k.Nam?.toString() === selectedNam || k.nam?.toString() === selectedNam))
+                                                .map(k => {
+                                                    const id = k.MaKyDoc ?? k.maKyDoc ?? k.ID ?? k.id;
+                                                    const kyValue = k.Ky ?? k.ky ?? '1';
+                                                    return <Picker.Item key={id} label={kyValue.toString()} value={id.toString()} style={{ fontSize: 14 }} />;
+                                                })}
+                                        </Picker>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={styles.dlRow}>
+                                <Text style={[styles.dlLabel, { width: 50 }]}>Đợt</Text>
+                                <View style={[styles.dlPicker, { width: '45%' }]}>
+                                    <Picker selectedValue={selectedDot} onValueChange={v => setSelectedDot(v)} style={styles.picker} dropdownIconColor="#2196F3">
+                                        {['01', '02', '03'].map(d => <Picker.Item key={d} label={d} value={d} style={{ fontSize: 14 }} />)}
+                                    </Picker>
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={styles.dlActions}>
+                            <TouchableOpacity style={styles.dlBtn} onPress={handleFullDownload}>
+                                <Text style={styles.dlBtnTxt}>TẢI VỀ</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.dlBtnMsg} onPress={() => setDownloadDialogVisible(false)}>
+                                <Text style={styles.dlBtnTxt}>TIN NHẮN</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity style={{ alignSelf: 'center', marginTop: 20, padding: 10 }} onPress={() => setDownloadDialogVisible(false)}>
+                            <Text style={{ color: '#F44336', fontWeight: 'bold', fontSize: 16 }}>QUAY LẠI</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
 
             <Modal visible={filterSortVisible} transparent animationType="slide">
                 <View style={styles.modalOverlay}>
@@ -501,6 +753,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         zIndex: 999
     },
+    dlForm: { paddingVertical: 10 },
+    dlRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+    dlLabel: { width: 45, color: '#333', fontWeight: 'bold' },
+    dlPicker: { flex: 1, backgroundColor: '#f0f0f0', borderRadius: 8, height: 44, justifyContent: 'center', borderWidth: 1, borderColor: '#DDD' },
+    picker: { height: 44, width: '100%' },
+    dlActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
+    dlBtn: { flex: 1, backgroundColor: '#f0f0f0', paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginRight: 12, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 2 },
+    dlBtnMsg: { flex: 1, backgroundColor: '#f0f0f0', paddingVertical: 14, borderRadius: 8, alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 2 },
+    dlBtnTxt: { fontWeight: 'bold', color: 'black', fontSize: 15 },
 });
 
 export default DanhSachKHScreen;
