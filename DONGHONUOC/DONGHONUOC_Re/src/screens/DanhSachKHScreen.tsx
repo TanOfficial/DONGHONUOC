@@ -291,7 +291,7 @@ const DanhSachKHScreen = () => {
                     setDialogVisible(false);
                     setLoading(true);
                     try {
-                        const success = await ApiService.huyDocSo(item.ma_danh_bo, item.ma_ky_doc);
+                        const success = await ApiService.huyDocSo(item.ma_danh_bo, item.ma_ky_doc || maKyDoc || 0);
                         if (success) {
                             const updated = [...customers];
                             updated[index] = { ...item, trang_thai: 0, chi_so_moi: undefined };
@@ -319,7 +319,7 @@ const DanhSachKHScreen = () => {
                     setDialogVisible(false);
                     setLoading(true);
                     try {
-                        const success = await ApiService.ghiChiSo(item.ma_danh_bo, item.ma_ky_doc, item.chi_so_cu, '40');
+                        const success = await ApiService.ghiChiSo(item.ma_danh_bo, item.ma_ky_doc || maKyDoc || 0, item.chi_so_cu, '40');
                         if (success) {
                             const updated = [...customers];
                             updated[index] = { ...item, trang_thai: 1, chi_so_moi: item.chi_so_cu };
@@ -343,7 +343,13 @@ const DanhSachKHScreen = () => {
         return (
             <TouchableOpacity
                 style={[styles.card, !isDone && styles.cardUnread]}
-                onPress={() => navigation.navigate('GhiNuoc', { customers, index })}
+                onPress={() => {
+                    const mapped = customers.map(c => ({
+                        ...c,
+                        ma_ky_doc: (c.ma_ky_doc === 0 || !c.ma_ky_doc) ? maKyDoc || 0 : c.ma_ky_doc
+                    }));
+                    navigation.navigate('GhiNuoc', { customers: mapped, index });
+                }}
             >
                 <TouchableOpacity onPress={() => handleQuickMarkToggle(item, index)} style={styles.cardLeading}>
                     <View style={[styles.avatar, { backgroundColor: isDone ? '#4CAF50' : '#FF9800' }]}>
@@ -490,28 +496,28 @@ const DanhSachKHScreen = () => {
                                 </View>
                             </View>
 
+                            {/* Năm and Kỳ stacked vertically to prevent overlap */}
                             <View style={styles.dlRow}>
-                                <View style={{ flex: 1, marginRight: 8 }}>
-                                    <Text style={styles.dlLabel}>Năm</Text>
-                                    <View style={styles.dlPicker}>
-                                        <Picker selectedValue={selectedNam} onValueChange={v => setSelectedNam(v)} style={styles.picker} dropdownIconColor="#2196F3">
-                                            {['2024', '2025', '2026'].map(y => <Picker.Item key={y} label={y} value={y} style={{ fontSize: 14 }} />)}
-                                        </Picker>
-                                    </View>
+                                <Text style={[styles.dlLabel, { width: 50 }]}>Năm</Text>
+                                <View style={styles.dlPicker}>
+                                    <Picker selectedValue={selectedNam} onValueChange={v => setSelectedNam(v)} style={styles.picker} dropdownIconColor="#2196F3">
+                                        {['2024', '2025', '2026'].map(y => <Picker.Item key={y} label={y} value={y} style={{ fontSize: 14 }} />)}
+                                    </Picker>
                                 </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.dlLabel}>Kỳ</Text>
-                                    <View style={styles.dlPicker}>
-                                        <Picker selectedValue={maKyDoc?.toString()} onValueChange={v => setMaKyDoc(parseInt(v))} style={styles.picker} dropdownIconColor="#2196F3">
-                                            {kyDocList
-                                                .filter(k => (k.Nam?.toString() === selectedNam || k.nam?.toString() === selectedNam))
-                                                .map(k => {
-                                                    const id = k.MaKyDoc ?? k.maKyDoc ?? k.ID ?? k.id;
-                                                    const kyValue = k.Ky ?? k.ky ?? '1';
-                                                    return <Picker.Item key={id} label={kyValue.toString()} value={id.toString()} style={{ fontSize: 14 }} />;
-                                                })}
-                                        </Picker>
-                                    </View>
+                            </View>
+
+                            <View style={styles.dlRow}>
+                                <Text style={[styles.dlLabel, { width: 50 }]}>Kỳ</Text>
+                                <View style={styles.dlPicker}>
+                                    <Picker selectedValue={maKyDoc?.toString()} onValueChange={v => setMaKyDoc(parseInt(v))} style={styles.picker} dropdownIconColor="#2196F3">
+                                        {kyDocList
+                                            .filter(k => (k.Nam?.toString() === selectedNam || k.nam?.toString() === selectedNam))
+                                            .map(k => {
+                                                const id = k.MaKyDoc ?? k.maKyDoc ?? k.ID ?? k.id;
+                                                const kyValue = k.Ky ?? k.ky ?? '1';
+                                                return <Picker.Item key={id} label={kyValue.toString()} value={id.toString()} style={{ fontSize: 14 }} />;
+                                            })}
+                                    </Picker>
                                 </View>
                             </View>
 
@@ -756,8 +762,8 @@ const styles = StyleSheet.create({
     dlForm: { paddingVertical: 10 },
     dlRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
     dlLabel: { width: 45, color: '#333', fontWeight: 'bold' },
-    dlPicker: { flex: 1, backgroundColor: '#f0f0f0', borderRadius: 8, height: 44, justifyContent: 'center', borderWidth: 1, borderColor: '#DDD' },
-    picker: { height: 44, width: '100%' },
+    dlPicker: { flex: 1, backgroundColor: '#f0f0f0', borderRadius: 8, height: 55, justifyContent: 'center', borderWidth: 1, borderColor: '#DDD' },
+    picker: { height: 55, width: '100%' },
     dlActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
     dlBtn: { flex: 1, backgroundColor: '#f0f0f0', paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginRight: 12, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 2 },
     dlBtnMsg: { flex: 1, backgroundColor: '#f0f0f0', paddingVertical: 14, borderRadius: 8, alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 2 },

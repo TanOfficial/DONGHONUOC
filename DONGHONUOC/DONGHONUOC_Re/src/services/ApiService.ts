@@ -183,19 +183,28 @@ class ApiService {
     }
 
     public async ghiChiSo(maDanhBo: string, maKyDoc: number, chiSoMoi: number, code = '40', ghiChu = '', hinhAnhBase64?: string) {
+        const payload = {
+            MaDanhBo: maDanhBo,
+            MaKyDoc: maKyDoc,
+            ChiSoMoi: chiSoMoi,
+            MaCode: code,
+            GhiChu: ghiChu,
+            NguoiDoc: this.currentUsername,
+            HinhAnh: hinhAnhBase64
+        };
+        const url = `${this.baseUrl}/docchiso/ghi`;
+        console.log(`🌐 [POST] ${url}`, payload);
+
         try {
-            const response = await axios.post(`${this.baseUrl}/docchiso/ghi`, {
-                MaDanhBo: maDanhBo,
-                MaKyDoc: maKyDoc,
-                ChiSoMoi: chiSoMoi,
-                MaCode: code,
-                GhiChu: ghiChu,
-                NguoiDoc: this.currentUsername,
-                HinhAnh: hinhAnhBase64
-            });
+            const response = await axios.post(url, payload);
+            console.log(`✅ [POST] ${url} Success:`, response.status);
             return response.status === 200;
-        } catch (e) {
-            console.error('❌ Lỗi ghi chỉ số:', e);
+        } catch (e: any) {
+            if (e.response) {
+                console.error(`❌ Lỗi ghi chỉ số (${e.response.status}):`, e.response.data);
+            } else {
+                console.error('❌ Lỗi ghi chỉ số:', e.message || e);
+            }
             return false;
         }
     }
@@ -329,8 +338,8 @@ class ApiService {
             gb: item.GB || item.gb,
             dm: item.DM || item.dm,
             dmhn: item.DMHN || item.dmhn,
-            doc_chi_so_id: item.DocChiSoId || item.docChiSoId,
-            ma_ky_doc: item.MaKyDoc || item.maKyDoc,
+            doc_chi_so_id: item.DocChiSoId ?? item.docChiSoId,
+            ma_ky_doc: item.MaKyDoc ?? item.maKyDoc,
             chi_so_cu: item.ChiSoCu ?? item.chiSoCu ?? 0,
             chi_so_moi: item.ChiSoMoi ?? item.chiSoMoi,
             tieu_thu: item.TieuThu ?? item.tieuThu ?? 0,

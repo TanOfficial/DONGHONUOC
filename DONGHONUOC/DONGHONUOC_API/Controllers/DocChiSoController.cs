@@ -144,13 +144,27 @@ namespace DONGHONUOC_API.Controllers
         [HttpPost("ghi")]
         public async Task<ActionResult> GhiChiSo([FromBody] GhiChiSoRequest request)
         {
+            Console.WriteLine($"💾 GhiChiSo: DB={request.MaDanhBo}, KyID={request.MaKyDoc}, user={request.NguoiDoc}");
             var lichDoc = await _db.KyDoc.FindAsync(request.MaKyDoc);
-            if (lichDoc == null) return NotFound("Không tìm thấy kỳ đọc");
+            if (lichDoc == null) 
+            {
+                Console.WriteLine($"❌ GhiChiSo: Không tìm thấy KyDoc với ID={request.MaKyDoc}");
+                return NotFound("Không tìm thấy kỳ đọc");
+            }
 
             string kyStr = lichDoc.Ky.ToString("D2");
-            var docCS = await _db.DocChiSo.FirstOrDefaultAsync(d => d.MaDanhBo == request.MaDanhBo && d.Nam == lichDoc.Nam && d.Ky == kyStr);
+            Console.WriteLine($"🔍 Searching for DB='{request.MaDanhBo}', Nam={lichDoc.Nam}, Ky='{kyStr}'");
+            
+            var docCS = await _db.DocChiSo.FirstOrDefaultAsync(d => 
+                d.MaDanhBo.Trim() == request.MaDanhBo.Trim() && 
+                d.Nam == lichDoc.Nam && 
+                d.Ky == kyStr);
 
-            if (docCS == null) return NotFound("Không tìm thấy danh bộ này trong kỳ");
+            if (docCS == null) 
+            {
+                Console.WriteLine($"❌ GhiChiSo: Không tìm thấy record DocSo cho DB='{request.MaDanhBo}' trong Kỳ {kyStr}/{lichDoc.Nam}");
+                return NotFound("Không tìm thấy danh bộ này trong kỳ");
+            }
 
             docCS.ChiSoMoi = request.ChiSoMoi;
             docCS.MaCode = request.MaCode;

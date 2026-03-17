@@ -107,15 +107,17 @@ const GhiNuocScreen = () => {
         if (!currentKH) return;
 
         // Instant data from customers list
-        setCsMoi(currentKH.chi_so_moi?.toString() ?? '');
+        const initialCsMoi = currentKH.chi_so_moi?.toString() ?? '';
+        setCsMoi(initialCsMoi);
         setGhiChu(currentKH.ghi_chu ?? '');
         setSelectedCode(currentKH.code ?? '40');
         setCapturedImage(currentKH.hinh_anh ?? null);
-        calculateTieuThu(currentKH.chi_so_moi?.toString() ?? '');
 
         // Use cache for history if available
         if (historyCache[currentKH.ma_danh_bo]) {
-            setHistory(historyCache[currentKH.ma_danh_bo]);
+            const cached = historyCache[currentKH.ma_danh_bo];
+            setHistory(cached);
+            calculateTieuThu(initialCsMoi, cached);
             return;
         }
 
@@ -123,23 +125,35 @@ const GhiNuocScreen = () => {
         try {
             // Load 3 history items
             const hist = await ApiService.layLichSuDoc(currentKH.ma_danh_bo, 3);
-            const paddedHist = [...hist];
+            // Filter out current kỳ record from history (in case it was already saved)
+            // Safety check: if h.chi_so matches the index we are about to edit, it might be the current reading.
+            const filteredHist = hist.filter((h: any) => h.chi_so?.toString() !== currentKH.chi_so_moi?.toString());
+
+            const paddedHist = [...filteredHist];
             while (paddedHist.length < 3) {
                 paddedHist.push({ code: '--', chi_so: '--', tieu_thu: '--' });
             }
             setHistory(paddedHist);
             setHistoryCache(prev => ({ ...prev, [currentKH.ma_danh_bo]: paddedHist }));
+
+            // Re-calculate consumption based on filtered history base
+            calculateTieuThu(initialCsMoi, paddedHist);
         } catch (e) {
             console.error('❌ Lỗi tải dữ liệu khách hàng:', e);
-            setHistory([{ code: '!', chi_so: 'Lỗi', tieu_thu: 'mạng' }, { code: '--', chi_so: '--', tieu_thu: '--' }, { code: '--', chi_so: '--', tieu_thu: '--' }]);
+            const errorHist = [{ code: '!', chi_so: 'Lỗi', tieu_thu: 'mạng' }, { code: '--', chi_so: '--', tieu_thu: '--' }, { code: '--', chi_so: '--', tieu_thu: '--' }];
+            setHistory(errorHist);
         } finally {
             setHistoryLoading(false);
         }
     };
 
-    const calculateTieuThu = (val: string) => {
+    const calculateTieuThu = (val: string, currentHistory?: any[]) => {
         const valInt = parseInt(val);
-        const oldInt = currentKH.chi_so_cu;
+        const activeHistory = currentHistory || history;
+        // Base on latest history record (Blue column) if available, otherwise fallback to chi_so_cu
+        const latestHist = activeHistory.length > 0 && activeHistory[0].chi_so !== '--' ? parseInt(activeHistory[0].chi_so) : currentKH.chi_so_cu;
+        const oldInt = isNaN(latestHist) ? currentKH.chi_so_cu : latestHist;
+
         if (!isNaN(valInt)) {
             setTieuThu(valInt > oldInt ? valInt - oldInt : 0);
         } else {
@@ -191,23 +205,40 @@ const GhiNuocScreen = () => {
     const [selectedHistory, setSelectedHistory] = useState<any>(null);
 
     const handleHistoryClick = (idx: number) => {
-        if (idx === 0) {
-            // Current input
+        if (idx === 3) {
+            // Current input (Teal)
+            if (!csMoi) return;
             setSelectedHistory({
                 ky: '01', nam: '2026',
                 code: selectedCode,
-                chi_so_cu: currentKH?.chi_so_cu,
+                chi_so_cu: (history.length > 0 && history[0].chi_so !== '--') ? parseInt(history[0].chi_so) : currentKH?.chi_so_cu,
                 chi_so: csMoi,
                 tieu_thu: tieuThu,
                 hinh_anh: capturedImage,
                 ngay_bd: '08/01/2026', ngay_kt: '08/02/2026'
             });
-        } else {
-            const item = history[idx - 1];
-            if (!item) return;
+            setInfoModalVisible(true);
+        } else if (idx === 2) {
+            // Yellow Column (Latest History / Old Index)
+            const item = (history.length > 0 && history[0].chi_so !== '--') ? history[0] : {
+                ky: '--', nam: '--',
+                code: currentKH?.code || '--',
+                chi_so_cu: '--',
+                chi_so: currentKH?.chi_so_cu?.toString(),
+                tieu_thu: '--',
+                hinh_anh: null,
+                ngay_bd: '--', ngay_kt: '--'
+            };
             setSelectedHistory(item);
+            setInfoModalVisible(true);
+        } else {
+            // idx=0 -> history[2], idx=1 -> history[1]
+            const historyIdx = idx === 0 ? 2 : 1;
+            const item = history[historyIdx];
+            if (!item || item.chi_so === '--') return;
+            setSelectedHistory(item);
+            setInfoModalVisible(true);
         }
-        setInfoModalVisible(true);
     };
 
     const handleSave = async (silent = false, useOldIndex = false) => {
@@ -342,9 +373,10 @@ const GhiNuocScreen = () => {
     };
 
     const getHistoryRowColor = (index: number) => {
-        if (index === 0) return '#FFEBEE'; // Oldest - Reddish
-        if (index === 1) return '#E3F2FD'; // Middle - Blueish
-        if (index === 2) return '#F1F8E9'; // Newest (Current attempt) - Greenish
+        if (index === 0) return '#FFEBEE'; // Pink (Oldest)
+        if (index === 1) return '#E3F2FD'; // Blue (Medium)
+        if (index === 2) return '#FFF9C4'; // Yellow (Latest History / Old Index)
+        if (index === 3) return '#B2DFDB'; // Teal (Current Input)
         return 'white';
     };
 
@@ -519,7 +551,9 @@ const GhiNuocScreen = () => {
                     <View style={styles.statsRow}>
                         <View style={[styles.statBox, styles.statBoxBlue]}>
                             <Text style={styles.statLabelBlue}>CS Cũ</Text>
-                            <Text style={styles.statValBlue}>{currentKH?.chi_so_cu}</Text>
+                            <Text style={styles.statValBlue}>
+                                {(history.length > 0 && history[0].chi_so !== '--') ? history[0].chi_so : currentKH?.chi_so_cu}
+                            </Text>
                         </View>
                         <View style={[styles.statBox, styles.statBoxOrange]}>
                             <Text style={styles.statLabelOrange}>Tiêu thụ</Text>
@@ -539,15 +573,21 @@ const GhiNuocScreen = () => {
                             <View style={[styles.cell, styles.headerCell]}>
                                 <Text style={styles.headerCellTxt}>Code</Text>
                             </View>
-                            {[0, 1, 2].map(i => {
-                                const val = i === 0 ? selectedCode : history[i - 1]?.code;
+                            {[0, 1, 2, 3].map(i => {
+                                // Teal (i=3) Empty until csMoi, Yellow (i=2) Fallback to currentKH.code
+                                let val = '--';
+                                if (i === 3) val = csMoi ? selectedCode : '--';
+                                else if (i === 2) val = (history[0]?.code !== '--' ? history[0]?.code : currentKH?.code) || '--';
+                                else if (i === 1) val = history[1]?.code || '--';
+                                else if (i === 0) val = history[2]?.code || '--';
+
                                 return (
                                     <TouchableOpacity
                                         key={i}
                                         style={[styles.cell, { backgroundColor: getHistoryRowColor(i) }]}
                                         onPress={() => handleHistoryClick(i)}
                                     >
-                                        <Text style={styles.cellTxt}>{val || '--'}</Text>
+                                        <Text style={styles.cellTxt}>{val}</Text>
                                     </TouchableOpacity>
                                 );
                             })}
@@ -556,15 +596,21 @@ const GhiNuocScreen = () => {
                             <View style={[styles.cell, styles.headerCell]}>
                                 <Text style={styles.headerCellTxt}>Chỉ số</Text>
                             </View>
-                            {[0, 1, 2].map(i => {
-                                const val = i === 0 ? csMoi : history[i - 1]?.chi_so;
+                            {[0, 1, 2, 3].map(i => {
+                                // Teal (i=3) Empty until csMoi, Yellow (i=2) Fallback to currentKH.chi_so_cu
+                                let val = '--';
+                                if (i === 3) val = csMoi || '--';
+                                else if (i === 2) val = (history[0]?.chi_so !== '--' ? history[0]?.chi_so : currentKH?.chi_so_cu?.toString()) || '--';
+                                else if (i === 1) val = history[1]?.chi_so || '--';
+                                else if (i === 0) val = history[2]?.chi_so || '--';
+
                                 return (
                                     <TouchableOpacity
                                         key={i}
                                         style={[styles.cell, { backgroundColor: getHistoryRowColor(i) }]}
                                         onPress={() => handleHistoryClick(i)}
                                     >
-                                        <Text style={styles.cellTxt}>{val || '--'}</Text>
+                                        <Text style={styles.cellTxt}>{val}</Text>
                                     </TouchableOpacity>
                                 );
                             })}
@@ -573,9 +619,25 @@ const GhiNuocScreen = () => {
                             <View style={[styles.cell, styles.headerCell]}>
                                 <Text style={styles.headerCellTxt}>Tiêu thụ</Text>
                             </View>
-                            {[0, 1, 2].map(i => {
-                                const val = i === 0 ? tieuThu : history[i - 1]?.tieu_thu;
-                                const hasPhoto = i === 0 ? !!capturedImage : !!history[i - 1]?.hinh_anh;
+                            {[0, 1, 2, 3].map(i => {
+                                // Teal (i=3) Empty until csMoi, Yellow (i=2) Consumption
+                                let val: any = '--';
+                                let hasPhoto = false;
+
+                                if (i === 3) {
+                                    val = csMoi ? tieuThu : '--';
+                                    hasPhoto = !!capturedImage && !!csMoi;
+                                } else if (i === 2) {
+                                    val = history[0]?.tieu_thu || '--';
+                                    hasPhoto = !!history[0]?.hinh_anh && history[0]?.hinh_anh !== '--';
+                                } else if (i === 1) {
+                                    val = history[1]?.tieu_thu || '--';
+                                    hasPhoto = !!history[1]?.hinh_anh && history[1]?.hinh_anh !== '--';
+                                } else if (i === 0) {
+                                    val = history[2]?.tieu_thu || '--';
+                                    hasPhoto = !!history[2]?.hinh_anh && history[2]?.hinh_anh !== '--';
+                                }
+
                                 return (
                                     <TouchableOpacity
                                         key={i}
@@ -583,7 +645,7 @@ const GhiNuocScreen = () => {
                                         onPress={() => handleHistoryClick(i)}
                                     >
                                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                            <Text style={styles.cellTxt}>{val || (val === 0 ? '0' : '--')}</Text>
+                                            <Text style={styles.cellTxt}>{val === 0 ? '0' : val}</Text>
                                             {hasPhoto && <Ionicons name="camera" size={14} color="#2196F3" style={{ marginLeft: 4 }} />}
                                         </View>
                                     </TouchableOpacity>
