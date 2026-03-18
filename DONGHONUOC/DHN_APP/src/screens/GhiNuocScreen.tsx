@@ -42,6 +42,10 @@ interface Customer {
     thue_tdvtn?: number;
     tong_cong?: number;
     ghi_chu_kh?: string;
+    nam?: number;
+    ky?: string;
+    ngay_bd?: string;
+    ngay_kt?: string;
 }
 
 const InfoItem = ({ label, value, boldValue = false }: { label: string, value: any, boldValue?: boolean }) => (
@@ -132,10 +136,19 @@ const GhiNuocScreen = () => {
         setHistoryLoading(true);
         try {
             // Load 3 history items
-            const hist = await ApiService.layLichSuDoc(currentKH.ma_danh_bo, 3);
-            // Filter out current kỳ record from history (in case it was already saved)
-            // Safety check: if h.chi_so matches the index we are about to edit, it might be the current reading.
-            const filteredHist = hist.filter((h: any) => h.chi_so?.toString() !== currentKH.chi_so_moi?.toString());
+            const hist = await ApiService.layLichSuDoc(currentKH.ma_danh_bo, 5);
+
+            // Filter history to ONLY include periods BEFORE the current one
+            const currentKy = parseInt(currentKH.ky || '0');
+            const currentNam = currentKH.nam || 0;
+
+            const filteredHist = hist.filter((h: any) => {
+                const hKy = parseInt(h.ky || '0');
+                const hNam = h.nam || 0;
+                if (hNam < currentNam) return true;
+                if (hNam === currentNam && hKy < currentKy) return true;
+                return false;
+            }).slice(0, 3);
 
             const paddedHist = [...filteredHist];
             while (paddedHist.length < 3) {
@@ -157,10 +170,8 @@ const GhiNuocScreen = () => {
 
     const calculateTieuThu = (val: string, currentHistory?: any[]) => {
         const valInt = parseInt(val);
-        const activeHistory = currentHistory || history;
-        // Base on latest history record (Blue column) if available, otherwise fallback to chi_so_cu
-        const latestHist = activeHistory.length > 0 && activeHistory[0].chi_so !== '--' ? parseInt(activeHistory[0].chi_so) : currentKH.chi_so_cu;
-        const oldInt = isNaN(latestHist) ? currentKH.chi_so_cu : latestHist;
+        // ALWAYS base consumption on the record's OWN chi_so_cu
+        const oldInt = currentKH.chi_so_cu;
 
         if (!isNaN(valInt)) {
             setTieuThu(valInt > oldInt ? valInt - oldInt : 0);
@@ -224,17 +235,19 @@ const GhiNuocScreen = () => {
             // Current input (Teal)
             if (!csMoi) return;
             setSelectedHistory({
-                ky: '01', nam: '2026',
+                ky: currentKH?.ky || '01',
+                nam: currentKH?.nam?.toString() || '2026',
                 code: selectedCode,
-                chi_so_cu: (history.length > 0 && history[0].chi_so !== '--') ? parseInt(history[0].chi_so) : currentKH?.chi_so_cu,
+                chi_so_cu: currentKH?.chi_so_cu,
                 chi_so: csMoi,
                 tieu_thu: tieuThu,
                 hinh_anh: capturedImage,
-                ngay_bd: '08/01/2026', ngay_kt: '08/02/2026'
+                ngay_bd: currentKH?.ngay_bd || '--',
+                ngay_kt: currentKH?.ngay_kt || '--'
             });
             setInfoModalVisible(true);
         } else if (idx === 2) {
-            // Yellow Column (Latest History / Old Index)
+            // Yellow Column (Latest History Relative to current record)
             const item = (history.length > 0 && history[0].chi_so !== '--') ? history[0] : {
                 ky: '--', nam: '--',
                 code: currentKH?.code_cu || currentKH?.code || '--',
@@ -247,7 +260,8 @@ const GhiNuocScreen = () => {
                 thue_tdvtn: currentKH?.thue_tdvtn,
                 tong_cong: currentKH?.tong_cong,
                 hinh_anh: null,
-                ngay_bd: '--', ngay_kt: '--'
+                ngay_bd: currentKH?.ngay_bd || '--',
+                ngay_kt: currentKH?.ngay_kt || '--'
             };
             setSelectedHistory(item);
             setInfoModalVisible(true);
@@ -590,7 +604,7 @@ const GhiNuocScreen = () => {
                         <View style={[styles.statBox, styles.statBoxBlue]}>
                             <Text style={styles.statLabelBlue}>CS Cũ</Text>
                             <Text style={styles.statValBlue}>
-                                {(history.length > 0 && history[0].chi_so !== '--') ? history[0].chi_so : currentKH?.chi_so_cu}
+                                {currentKH?.chi_so_cu ?? '--'}
                             </Text>
                         </View>
                         <View style={[styles.statBox, styles.statBoxOrange]}>

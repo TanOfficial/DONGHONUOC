@@ -89,8 +89,11 @@ namespace DONGHONUOC_API.Models
         public int Nam { get; set; }
         public int ChiSo { get; set; }
         public int TieuThu { get; set; }
+        public int ChiSoCu { get; set; }
         public string MaCode { get; set; } = "40";
         public DateTime? NgayDoc { get; set; }
+        public DateTime? TuNgay { get; set; }
+        public DateTime? DenNgay { get; set; }
     }
 
     // ====== DTO cho danh sách đọc số (gom thông tin KH + chỉ số) ======
@@ -102,6 +105,8 @@ namespace DONGHONUOC_API.Models
         public string? DiaChi { get; set; }
         public string? DiaChiDHN { get; set; }
         public string? MaLoTrinh { get; set; }
+        public int? Nam { get; set; }
+        public string? Ky { get; set; }
         public string? Hieu { get; set; }
         public string? Co { get; set; }
         public string? SoThan { get; set; }
@@ -127,6 +132,8 @@ namespace DONGHONUOC_API.Models
         public string? TinhTrang { get; set; }
         public string? HinhAnh { get; set; }
         public DateTime? NgayDoc { get; set; }
+        public DateTime? TuNgay { get; set; }
+        public DateTime? DenNgay { get; set; }
 
         public long TienNuoc { get; set; }
         public long ThueGTGT { get; set; }

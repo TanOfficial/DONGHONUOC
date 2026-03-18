@@ -78,7 +78,16 @@ namespace DONGHONUOC_API.Models
         public string? TenKhachHang { get; set; }
 
         [Column("SoNhaMoi")]
-        public string? DiaChi { get; set; }
+        public string? SoNhaMoi { get; set; }
+
+        [Column("SoNhaCu")]
+        public string? SoNhaCu { get; set; }
+
+        [Column("Duong")]
+        public string? Duong { get; set; }
+
+        [NotMapped]
+        public string? DiaChi => string.IsNullOrWhiteSpace(SoNhaMoi) ? $"{SoNhaCu} {Duong}".Trim() : SoNhaMoi.Trim();
 
         [Column("SDT")]
         public string? SoDienThoaiKH { get; set; }
@@ -105,5 +114,11 @@ namespace DONGHONUOC_API.Models
 
         [Column("DMHN")]
         public int? DMHN { get; set; }
+
+        [Column("TuNgay")]
+        public DateTime? TuNgay { get; set; }
+
+        [Column("DenNgay")]
+        public DateTime? DenNgay { get; set; }
     }
 }

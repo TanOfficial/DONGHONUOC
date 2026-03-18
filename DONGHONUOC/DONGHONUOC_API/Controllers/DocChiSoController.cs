@@ -42,7 +42,10 @@ namespace DONGHONUOC_API.Controllers
             {
                 search = search.ToLower();
                 // Chỉ tìm theo MaDanhBo (DanhBa) - TenKhachHang là [NotMapped] nên EF Core không dịch được sang SQL
-                query = query.Where(d => d.MaDanhBo.ToLower().Contains(search) || d.DiaChi!.ToLower().Contains(search));
+                query = query.Where(d => d.MaDanhBo.ToLower().Contains(search) || 
+                                         (d.SoNhaMoi != null && d.SoNhaMoi.ToLower().Contains(search)) ||
+                                         (d.SoNhaCu != null && d.SoNhaCu.ToLower().Contains(search)) ||
+                                         (d.Duong != null && d.Duong.ToLower().Contains(search)));
             }
 
             var pagedQuery = query.OrderBy(d => d.MaLoTrinh).ThenBy(d => d.MaDanhBo).AsQueryable();
@@ -59,6 +62,8 @@ namespace DONGHONUOC_API.Controllers
                 HoTen = d.TenKhachHang ?? "",
                 DiaChi = d.DiaChi,
                 MaLoTrinh = d.MaLoTrinh,
+                Nam = d.Nam,
+                Ky = d.Ky,
                 Hieu = d.Hieu,
                 Co = d.Co,
                 SoThan = d.SoThan,
@@ -85,7 +90,9 @@ namespace DONGHONUOC_API.Controllers
                 GhiChu = d.GhiChu,
                 GhiChuKH = d.GhiChuKH,
                 HinhAnh = d.HinhAnh,
-                NgayDoc = d.NgayDoc
+                NgayDoc = d.NgayDoc,
+                TuNgay = d.TuNgay,
+                DenNgay = d.DenNgay
             }).ToList();
 
             return result;
@@ -106,7 +113,9 @@ namespace DONGHONUOC_API.Controllers
             // Tìm trong toàn bộ bảng DocSo, lấy bản ghi gần nhất của mỗi DanhBa
             var query = _db.DocChiSo
                 .Where(d => d.MaDanhBo.ToLower().Contains(keyword) ||
-                            (d.DiaChi != null && d.DiaChi.ToLower().Contains(keyword)))
+                            (d.SoNhaMoi != null && d.SoNhaMoi.ToLower().Contains(keyword)) ||
+                            (d.SoNhaCu != null && d.SoNhaCu.ToLower().Contains(keyword)) ||
+                            (d.Duong != null && d.Duong.ToLower().Contains(keyword)))
                 .OrderByDescending(d => d.Nam)
                 .ThenByDescending(d => d.Ky)
                 .ThenBy(d => d.MaDanhBo);
@@ -125,6 +134,8 @@ namespace DONGHONUOC_API.Controllers
                 HoTen = d.TenKhachHang ?? "",
                 DiaChi = d.DiaChi,
                 MaLoTrinh = d.MaLoTrinh,
+                Nam = d.Nam,
+                Ky = d.Ky,
                 Hieu = d.Hieu,
                 Co = d.Co,
                 SoThan = d.SoThan,
@@ -151,7 +162,9 @@ namespace DONGHONUOC_API.Controllers
                 GhiChu = d.GhiChu,
                 GhiChuKH = d.GhiChuKH,
                 HinhAnh = d.HinhAnh,
-                NgayDoc = d.NgayDoc
+                NgayDoc = d.NgayDoc,
+                TuNgay = d.TuNgay,
+                DenNgay = d.DenNgay
             }).ToList();
 
             return result;
@@ -283,51 +296,54 @@ namespace DONGHONUOC_API.Controllers
         [HttpGet("lichsu/{maDanhBo}")]
         public async Task<ActionResult<List<LichSuItem>>> GetLichSu(string maDanhBo, [FromQuery] int limit = 3)
         {
-            var result = await (from ls in _db.LichSuDocSo
-                                join kd in _db.KyDoc on ls.MaKyDoc equals kd.MaKyDoc
-                                where ls.MaDanhBo == maDanhBo && ls.HanhDong == "DocMoi"
-                                orderby ls.ThoiGian descending
-                                select new LichSuItem
-                                {
-                                    Ky = kd.Ky,
-                                    Nam = kd.Nam,
-                                    ChiSo = ls.ChiSo,
-                                    TieuThu = ls.TieuThu,
-                                    MaCode = ls.MaCode,
-                                    NgayDoc = ls.ThoiGian
-                                })
-                               .Take(limit)
-                               .ToListAsync();
+            var raw = await _db.DocChiSo
+                .Where(ls => ls.MaDanhBo == maDanhBo)
+                .OrderByDescending(ls => ls.Nam)
+                .ThenByDescending(ls => ls.Ky)
+                .Take(limit)
+                .ToListAsync();
+
+            var result = raw.Select(ls => new LichSuItem
+            {
+                Ky = int.TryParse(ls.Ky, out int k) ? k : 0,
+                Nam = ls.Nam ?? 0,
+                ChiSo = ls.ChiSoMoi ?? ls.ChiSoCu ?? 0,
+                ChiSoCu = ls.ChiSoCu ?? 0,
+                TieuThu = ls.TieuThu ?? 0,
+                MaCode = ls.MaCode ?? "40",
+                NgayDoc = ls.NgayDoc,
+                TuNgay = ls.TuNgay,
+                DenNgay = ls.DenNgay
+            }).ToList();
+
             return result;
         }
 
         [HttpPost("lichsu/bulk")]
         public async Task<ActionResult<Dictionary<string, List<LichSuItem>>>> GetLichSuBulk([FromBody] List<string> maDanhBos, [FromQuery] int limit = 3)
         {
-            var result = await (from ls in _db.LichSuDocSo
-                                join kd in _db.KyDoc on ls.MaKyDoc equals kd.MaKyDoc
-                                where maDanhBos.Contains(ls.MaDanhBo) && ls.HanhDong == "DocMoi"
-                                orderby ls.ThoiGian descending
-                                select new
-                                {
-                                    MaDanhBo = ls.MaDanhBo,
-                                    Item = new LichSuItem
-                                    {
-                                        Ky = kd.Ky,
-                                        Nam = kd.Nam,
-                                        ChiSo = ls.ChiSo,
-                                        TieuThu = ls.TieuThu,
-                                        MaCode = ls.MaCode,
-                                        NgayDoc = ls.ThoiGian
-                                    }
-                                })
-                               .ToListAsync();
+            var raw = await _db.DocChiSo
+                .Where(ls => maDanhBos.Contains(ls.MaDanhBo))
+                .OrderByDescending(ls => ls.Nam)
+                .ThenByDescending(ls => ls.Ky)
+                .ToListAsync();
 
-            var grouped = result
+            var grouped = raw
                 .GroupBy(x => x.MaDanhBo)
                 .ToDictionary(
                     g => g.Key,
-                    g => g.Select(x => x.Item).Take(limit).ToList()
+                    g => g.Select(ls => new LichSuItem
+                    {
+                        Ky = int.TryParse(ls.Ky, out int k) ? k : 0,
+                        Nam = ls.Nam ?? 0,
+                        ChiSo = ls.ChiSoMoi ?? ls.ChiSoCu ?? 0,
+                        ChiSoCu = ls.ChiSoCu ?? 0,
+                        TieuThu = ls.TieuThu ?? 0,
+                        MaCode = ls.MaCode ?? "40",
+                        NgayDoc = ls.NgayDoc,
+                        TuNgay = ls.TuNgay,
+                        DenNgay = ls.DenNgay
+                    }).Take(limit).ToList()
                 );
 
             return grouped;
@@ -594,7 +610,7 @@ namespace DONGHONUOC_API.Controllers
                         TieuThu = 0,
                         TrangThai = 0,
                         MaCode = row.MaCode,
-                        DiaChi = row.DiaChi,
+                        SoNhaMoi = row.DiaChi,
                         MaLoTrinh = row.MaDot,
                         Hieu = row.Hieu,
                         Co = row.Co,
@@ -610,7 +626,7 @@ namespace DONGHONUOC_API.Controllers
                 else
                 {
                     existing.ChiSoCu = row.CSCu;
-                    if (!string.IsNullOrEmpty(row.DiaChi)) existing.DiaChi = row.DiaChi;
+                    if (!string.IsNullOrEmpty(row.DiaChi)) existing.SoNhaMoi = row.DiaChi;
                     if (!string.IsNullOrEmpty(row.MaDot)) existing.MaLoTrinh = row.MaDot;
                     capNhat++;
                 }

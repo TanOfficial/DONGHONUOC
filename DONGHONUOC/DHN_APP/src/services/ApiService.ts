@@ -267,8 +267,11 @@ class ApiService {
                     nam: item.Nam || item.nam,
                     chi_so: item.ChiSo || item.chiSo || 0,
                     tieu_thu: item.TieuThu || item.tieuThu || 0,
+                    chi_so_cu: item.ChiSoCu ?? item.chiSoCu ?? '--',
                     code: item.MaCode || item.maCode || '40',
-                    ngay_doc: item.NgayDoc || item.ngayDoc
+                    ngay_doc: item.NgayDoc || item.ngayDoc,
+                    ngay_bd: item.TuNgay || item.tuNgay ? new Date(item.TuNgay || item.tuNgay).toLocaleDateString('en-GB') : '--',
+                    ngay_kt: item.DenNgay || item.denNgay ? new Date(item.DenNgay || item.denNgay).toLocaleDateString('en-GB') : '--'
                 }));
             }
             return [];
@@ -290,8 +293,11 @@ class ApiService {
                         nam: item.Nam || item.nam,
                         chi_so: item.ChiSo || item.chiSo || 0,
                         tieu_thu: item.TieuThu || item.tieuThu || 0,
+                        chi_so_cu: item.ChiSoCu ?? item.chiSoCu ?? '--',
                         code: item.MaCode || item.maCode || '40',
-                        ngay_doc: item.NgayDoc || item.ngayDoc
+                        ngay_doc: item.NgayDoc || item.ngayDoc,
+                        ngay_bd: item.TuNgay || item.tuNgay ? new Date(item.TuNgay || item.tuNgay).toLocaleDateString('en-GB') : '--',
+                        ngay_kt: item.DenNgay || item.denNgay ? new Date(item.DenNgay || item.denNgay).toLocaleDateString('en-GB') : '--'
                     }));
                 });
                 return result;
@@ -330,6 +336,8 @@ class ApiService {
             dia_chi: item.DiaChi || item.diaChi,
             dia_chi_dhn: item.DiaChiDHN || item.diaChiDHN,
             ma_lo_trinh: item.MaLoTrinh || item.maLoTrinh,
+            nam: item.Nam || item.nam,
+            ky: item.Ky || item.ky,
             hieu: item.Hieu || item.hieu,
             co: item.Co || item.co,
             so_than: item.SoThan || item.soThan,
@@ -356,6 +364,8 @@ class ApiService {
             phivmt: item.Phivmt ?? item.phivmt ?? 0,
             thue_tdvtn: item.ThueTDVTN ?? item.thueTDVTN ?? 0,
             tong_cong: item.TongCong ?? item.tongCong ?? 0,
+            ngay_bd: item.TuNgay || item.tuNgay ? new Date(item.TuNgay || item.tuNgay).toLocaleDateString('en-GB') : '--',
+            ngay_kt: item.DenNgay || item.denNgay ? new Date(item.DenNgay || item.denNgay).toLocaleDateString('en-GB') : '--'
         };
     }
 }
