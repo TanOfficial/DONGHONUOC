@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
     StyleSheet, View, Text, TouchableOpacity, TextInput, ScrollView,
-    SafeAreaView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image, Modal
+    ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image, Modal
 } from 'react-native';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Checkbox from 'expo-checkbox';
@@ -308,16 +309,16 @@ const GhiNuocScreen = () => {
         try {
             console.log('📸 Launching Camera...');
             const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ['images'], // Updated to use array of strings/MediaType
                 allowsEditing: false,
-                aspect: [4, 3],
                 quality: 0.8,
             });
 
-            console.log('📸 Camera Result:', JSON.stringify(result));
+            console.log('📸 FULL Camera Result:', JSON.stringify(result));
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const uri = result.assets[0].uri;
                 console.log('📸 Photo URI success:', uri);
+                Alert.alert('Thành công', 'Đã chụp được ảnh!');
                 setCapturedImage(uri);
             } else {
                 console.log('📸 Camera cancelled or no assets');
@@ -338,16 +339,16 @@ const GhiNuocScreen = () => {
         try {
             console.log('🖼️ Launching Library...');
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ['images'], // Updated to use array of strings/MediaType
                 allowsEditing: false,
-                aspect: [4, 3],
                 quality: 0.8,
             });
 
-            console.log('🖼️ Library Result:', JSON.stringify(result));
+            console.log('🖼️ FULL Library Result:', JSON.stringify(result));
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const uri = result.assets[0].uri;
                 console.log('🖼️ Picked URI success:', uri);
+                Alert.alert('Thành công', 'Đã chọn được ảnh!');
                 setCapturedImage(uri);
             } else {
                 console.log('🖼️ Library cancelled or no assets');
@@ -468,7 +469,7 @@ const GhiNuocScreen = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
             {loading && (
                 <View style={styles.loadingOverlay}>
                     <ActivityIndicator size="large" color="#2196F3" />
@@ -495,7 +496,7 @@ const GhiNuocScreen = () => {
                     setTimeout(() => {
                         if (val === 'camera') _takePhoto();
                         else if (val === 'gallery') _pickImage();
-                    }, Platform.OS === 'ios' ? 800 : 100);
+                    }, Platform.OS === 'ios' ? 1000 : 100);
                 }}
                 onCancel={() => setImageOptionVisible(false)}
             />

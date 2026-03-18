@@ -1,5 +1,5 @@
 console.log('📱 DANH SACH KH SCREEN LOADED');
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     StyleSheet, View, Text, FlatList, TextInput,
     TouchableOpacity, ActivityIndicator, SafeAreaView, Modal, Alert, ScrollView
@@ -63,6 +63,8 @@ const DanhSachKHScreen = () => {
     const [filterType, setFilterType] = useState('Tất cả');
     const [sortType, setSortType] = useState('MLT');
     const [filterSortVisible, setFilterSortVisible] = useState(false);
+    const [showScrollTop, setShowScrollTop] = useState(false);
+    const flatListRef = useRef<FlatList>(null);
 
     // Custom Component States
     const [ipModalVisible, setIpModalVisible] = useState(false);
@@ -137,6 +139,15 @@ const DanhSachKHScreen = () => {
     const fetchCustomers = async (kyId: number, pageNum: number, reset = false) => {
         console.log('🔍 fetchCustomers trigger:', { kyId, pageNum, reset, currentMaKyDoc: maKyDoc });
         if (!kyId || loading) return;
+
+        // Ensure page update is clean
+        if (reset) {
+            setPage(1);
+            flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        } else {
+            flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        }
+
         setLoading(true);
         try {
             // 1. Fetch ALL local data for this Ky
@@ -265,9 +276,10 @@ const DanhSachKHScreen = () => {
             if (reset) {
                 setCustomers(processed);
             } else {
-                setCustomers(prev => [...prev, ...processed]);
+                setCustomers(processed); // With footer buttons, we always replace the set for the specific page
             }
-            setHasMore(data.length === 50);
+            console.log(`📊 Page ${pageNum} loaded: ${processed.length} items. Total Filtered: ${totalFiltered}`);
+            setHasMore(isFullDownloaded ? (totalFiltered > pageNum * 50) : (data.length === 50));
             setPage(pageNum);
         } catch (e) {
             console.error('❌ Lỗi tải khách hàng:', e);
@@ -653,16 +665,28 @@ const DanhSachKHScreen = () => {
             </View>
 
             <FlatList
+                ref={flatListRef}
                 data={customers}
                 renderItem={renderItem}
                 keyExtractor={(item, idx) => item.ma_danh_bo + idx}
                 onRefresh={() => fetchCustomers(maKyDoc!, 1, true)}
                 refreshing={refreshing}
-                onEndReached={() => hasMore && !loading && fetchCustomers(maKyDoc!, page + 1)}
-                onEndReachedThreshold={0.5}
+                onScroll={(e) => {
+                    const offset = e.nativeEvent.contentOffset.y;
+                    setShowScrollTop(offset > 300);
+                }}
                 ListFooterComponent={() => loading ? <ActivityIndicator style={{ margin: 20 }} color="#2196F3" /> : null}
                 contentContainerStyle={styles.listContent}
             />
+
+            {showScrollTop && (
+                <TouchableOpacity
+                    style={styles.scrollTopBtn}
+                    onPress={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
+                >
+                    <Ionicons name="arrow-up" size={24} color="white" />
+                </TouchableOpacity>
+            )}
 
             {/* Pagination Footer exact match Flutter */}
             <View style={styles.paginationFooter}>
@@ -681,7 +705,7 @@ const DanhSachKHScreen = () => {
 
                 <TouchableOpacity
                     style={[styles.pageNavBtn, !hasMore && styles.pageBtnDisabled]}
-                    onPress={() => hasMore && fetchCustomers(maKyDoc!, page + 1, true)}
+                    onPress={() => hasMore && fetchCustomers(maKyDoc!, page + 1)}
                 >
                     <Text style={styles.pageBtnTxt}>Tiếp</Text>
                     <Ionicons name="chevron-forward" size={14} color="white" />
@@ -768,6 +792,22 @@ const styles = StyleSheet.create({
     dlBtn: { flex: 1, backgroundColor: '#f0f0f0', paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginRight: 12, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 2 },
     dlBtnMsg: { flex: 1, backgroundColor: '#f0f0f0', paddingVertical: 14, borderRadius: 8, alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 2 },
     dlBtnTxt: { fontWeight: 'bold', color: 'black', fontSize: 15 },
+    scrollTopBtn: {
+        position: 'absolute',
+        bottom: 120, // Moved higher to avoid overlap with pagination footer
+        right: 20,
+        backgroundColor: '#2196F3',
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+    }
 });
 
 export default DanhSachKHScreen;
