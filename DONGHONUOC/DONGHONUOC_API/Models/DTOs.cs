@@ -116,14 +116,23 @@ namespace DONGHONUOC_API.Models
         public int MaKyDoc { get; set; }
         public int ChiSoCu { get; set; }
         public int? ChiSoMoi { get; set; }
+        public int? TieuThuCu { get; set; }
         public int? TieuThu { get; set; }
+        public string? CodeCu { get; set; }
         public string MaCode { get; set; } = "40";
         public int TBTT { get; set; }
         public int TrangThai { get; set; }
         public string? GhiChu { get; set; }
+        public string? GhiChuKH { get; set; }
         public string? TinhTrang { get; set; }
         public string? HinhAnh { get; set; }
         public DateTime? NgayDoc { get; set; }
+
+        public long TienNuoc { get; set; }
+        public long ThueGTGT { get; set; }
+        public long Phivmt { get; set; }
+        public long ThueTDVTN { get; set; }
+        public long TongCong { get; set; }
     }
 
     // ====== DTO cho thống kê theo Đợt ======

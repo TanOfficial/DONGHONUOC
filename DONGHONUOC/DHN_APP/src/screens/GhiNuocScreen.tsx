@@ -21,6 +21,8 @@ interface Customer {
     dia_chi: string;
     chi_so_cu: number;
     chi_so_moi?: number | null;
+    tieu_thu_cu?: number;
+    code_cu?: string;
     trang_thai: number;
     ma_ky_doc: number;
     ghi_chu?: string;
@@ -34,6 +36,12 @@ interface Customer {
     dm?: string;
     dmhn?: number;
     tbtt?: number;
+    tien_nuoc?: number;
+    thue_gtgt?: number;
+    phivmt?: number;
+    thue_tdvtn?: number;
+    tong_cong?: number;
+    ghi_chu_kh?: string;
 }
 
 const InfoItem = ({ label, value, boldValue = false }: { label: string, value: any, boldValue?: boolean }) => (
@@ -161,37 +169,44 @@ const GhiNuocScreen = () => {
         }
     };
 
-    const calculateBill = (tt: number, gb?: string, dm?: string) => {
-        // Updated formula for GB 11 (Sinh hoạt): 
-        // (SHN x 6300) + (SHTM x 6700) + (SHVM1 x 12900) + (SHVM2 x 14400)
-        // Mocking limits for now: SHN: 4, SHTM: 10, SHVM1: 10, rest: SHVM2
-
+    const calculateBill = (tt: number, gb?: string, dmStr?: string, dmhnStr?: number) => {
         let waterMoney = 0;
+        let vat = 0;
+        let envFee = 0;
+        let envTax = 0;
+
+        const dm = parseInt(dmStr || '0') || 0;
+        const dmhn = dmhnStr || 0;
+
         if (gb === '11') {
-            let remaining = tt;
+            const shn = Math.min(tt, dmhn);
+            let remaining = tt - shn;
 
-            const shn = Math.min(remaining, 4);
-            waterMoney += shn * 6300;
-            remaining -= shn;
-
-            const shtm = Math.min(remaining, 10);
-            waterMoney += shtm * 6700;
+            const maxShtm = Math.max(0, dm - dmhn);
+            const shtm = Math.min(remaining, maxShtm);
             remaining -= shtm;
 
-            const shvm1 = Math.min(remaining, 10);
-            waterMoney += shvm1 * 12900;
+            // SHVM1 is usually DM / 2 (from 4m3 to 6m3 is 2m3 per person)
+            const maxShvm1 = dm > 0 ? dm / 2 : 0;
+            const shvm1 = Math.min(remaining, maxShvm1);
             remaining -= shvm1;
 
-            waterMoney += remaining * 14400;
+            const shvm2 = remaining;
+
+            waterMoney = (shn * 6300) + (shtm * 6700) + (shvm1 * 12900) + (shvm2 * 14400);
+
+            vat = Math.round(waterMoney * 0.05);
+            envFee = Math.round(tt * 3470);
+            envTax = Math.round(envFee * 0.08);
         } else {
             // Default for other GBs
             waterMoney = tt * 11566;
+            vat = Math.round(waterMoney * 0.05);
+            envFee = Math.round(tt * 3470);
+            envTax = Math.round(envFee * 0.08);
         }
 
-        const vat = Math.round(waterMoney * 0.05);
-        const envFee = Math.round(tt * 3470);
-        const envTax = Math.round(envFee * 0.08);
-        const total = waterMoney + vat + envFee + envTax;
+        const total = Math.round(waterMoney + vat + envFee + envTax);
 
         return {
             waterMoney: Math.round(waterMoney).toLocaleString('vi-VN'),
@@ -222,10 +237,15 @@ const GhiNuocScreen = () => {
             // Yellow Column (Latest History / Old Index)
             const item = (history.length > 0 && history[0].chi_so !== '--') ? history[0] : {
                 ky: '--', nam: '--',
-                code: currentKH?.code || '--',
+                code: currentKH?.code_cu || currentKH?.code || '--',
                 chi_so_cu: '--',
                 chi_so: currentKH?.chi_so_cu?.toString(),
-                tieu_thu: '--',
+                tieu_thu: currentKH?.tieu_thu_cu?.toString() ?? '--',
+                tien_nuoc: currentKH?.tien_nuoc,
+                thue_gtgt: currentKH?.thue_gtgt,
+                phivmt: currentKH?.phivmt,
+                thue_tdvtn: currentKH?.thue_tdvtn,
+                tong_cong: currentKH?.tong_cong,
                 hinh_anh: null,
                 ngay_bd: '--', ngay_kt: '--'
             };
@@ -461,7 +481,20 @@ const GhiNuocScreen = () => {
                             <InfoItem label="Tiêu Thụ" value={selectedHistory?.tieu_thu} boldValue />
 
                             {(() => {
-                                const bd = calculateBill(selectedHistory?.tieu_thu || 0, currentKH?.gb);
+                                let bd;
+                                if (selectedHistory?.tong_cong !== undefined && selectedHistory?.ky === '--') {
+                                    // Use exact values from database for old DocSo records
+                                    bd = {
+                                        waterMoney: (selectedHistory.tien_nuoc || 0).toLocaleString('vi-VN'),
+                                        vat: (selectedHistory.thue_gtgt || 0).toLocaleString('vi-VN'),
+                                        envFee: (selectedHistory.phivmt || 0).toLocaleString('vi-VN'),
+                                        envTax: (selectedHistory.thue_tdvtn || 0).toLocaleString('vi-VN'),
+                                        total: (selectedHistory.tong_cong || 0).toLocaleString('vi-VN')
+                                    };
+                                } else {
+                                    // Provisionally calculate for new numbers
+                                    bd = calculateBill(Number(selectedHistory?.tieu_thu) || 0, currentKH?.gb, currentKH?.dm?.toString(), currentKH?.dmhn);
+                                }
                                 return (
                                     <>
                                         <InfoItem label="Tiền Nước" value={`${bd.waterMoney}`} />
@@ -537,6 +570,11 @@ const GhiNuocScreen = () => {
                         <Ionicons name="create-outline" size={20} color="orange" />
                         <View style={{ marginLeft: 8, flex: 1 }}>
                             <Text style={styles.noteTitle}>Ghi Chú:</Text>
+                            {currentKH?.ghi_chu_kh ? (
+                                <Text style={[styles.noteTxt, { color: '#D84315', marginBottom: 2 }]} numberOfLines={2}>
+                                    [KH] {currentKH.ghi_chu_kh}
+                                </Text>
+                            ) : null}
                             <Text style={ghiChu ? styles.noteTxt : styles.noteHint} numberOfLines={1}>
                                 {ghiChu || 'Chưa có ghi chú (Chạm để sửa)'}
                             </Text>
@@ -577,7 +615,7 @@ const GhiNuocScreen = () => {
                                 // Teal (i=3) Empty until csMoi, Yellow (i=2) Fallback to currentKH.code
                                 let val = '--';
                                 if (i === 3) val = csMoi ? selectedCode : '--';
-                                else if (i === 2) val = (history[0]?.code !== '--' ? history[0]?.code : currentKH?.code) || '--';
+                                else if (i === 2) val = (history[0]?.code !== '--' ? history[0]?.code : (currentKH?.code_cu || currentKH?.code)) || '--';
                                 else if (i === 1) val = history[1]?.code || '--';
                                 else if (i === 0) val = history[2]?.code || '--';
 
@@ -628,7 +666,7 @@ const GhiNuocScreen = () => {
                                     val = csMoi ? tieuThu : '--';
                                     hasPhoto = !!capturedImage && !!csMoi;
                                 } else if (i === 2) {
-                                    val = history[0]?.tieu_thu || '--';
+                                    val = (history[0]?.tieu_thu && history[0]?.tieu_thu !== '--') ? history[0]?.tieu_thu : (currentKH?.tieu_thu_cu ?? '--');
                                     hasPhoto = !!history[0]?.hinh_anh && history[0]?.hinh_anh !== '--';
                                 } else if (i === 1) {
                                     val = history[1]?.tieu_thu || '--';
@@ -714,10 +752,6 @@ const GhiNuocScreen = () => {
                 <TouchableOpacity style={styles.navBtn} onPress={() => Alert.alert('PC', 'Mở chia sẻ dữ liệu CSV')}>
                     <Ionicons name="share-social" size={22} color="teal" />
                     <Text style={styles.navBtnTxt}>PC</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.navBtn} onPress={() => Alert.alert('Thông báo', 'Đã nhấn chia sẻ')}>
-                    <Ionicons name="mail-outline" size={24} color="#FBC02D" />
-                    <Text style={styles.navBtnTxt}>Thông Tin</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.navBtn} onPress={() => setNoteDialogVisible(true)}>
                     <Ionicons name="create" size={22} color="#B8860B" />

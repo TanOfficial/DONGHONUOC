@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // In a real app, this would be in a .env file
 // 10.0.2.2 = address emulator uses to reach host machine's localhost
 // Using detected local IP for physical device (iPhone/Android) connectivity
-const DEFAULT_IP = '192.168.2.102';
+const DEFAULT_IP = '192.168.1.139';
 const PORT = '5000';
 const TIMEOUT_MS = 10000; // 10 seconds
 
@@ -342,12 +342,20 @@ class ApiService {
             ma_ky_doc: item.MaKyDoc ?? item.maKyDoc,
             chi_so_cu: item.ChiSoCu ?? item.chiSoCu ?? 0,
             chi_so_moi: item.ChiSoMoi ?? item.chiSoMoi,
+            tieu_thu_cu: item.TieuThuCu ?? item.tieuThuCu ?? 0,
             tieu_thu: item.TieuThu ?? item.tieuThu ?? 0,
+            code_cu: item.CodeCu || item.codeCu || '40',
             code: item.MaCode || item.maCode || '40',
             tbtt: item.TBTT ?? item.tbtt ?? 0,
             trang_thai: item.TrangThai ?? item.trangThai ?? 0,
             ghi_chu: item.GhiChu || item.ghiChu,
+            ghi_chu_kh: item.GhiChuKH || item.ghiChuKH,
             hinh_anh: item.HinhAnh || item.hinhAnh,
+            tien_nuoc: item.TienNuoc ?? item.tienNuoc ?? 0,
+            thue_gtgt: item.ThueGTGT ?? item.thueGTGT ?? 0,
+            phivmt: item.Phivmt ?? item.phivmt ?? 0,
+            thue_tdvtn: item.ThueTDVTN ?? item.thueTDVTN ?? 0,
+            tong_cong: item.TongCong ?? item.tongCong ?? 0,
         };
     }
 }

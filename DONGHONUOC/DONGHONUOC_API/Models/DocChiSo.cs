@@ -25,8 +25,14 @@ namespace DONGHONUOC_API.Models
         [Column("CSMoi")]
         public int? ChiSoMoi { get; set; }
 
+        [Column("TieuThuCu")]
+        public int? TieuThuCu { get; set; }
+
         [Column("TieuThuMoi")]
         public int? TieuThu { get; set; }
+
+        [Column("CodeCu")]
+        public string? CodeCu { get; set; }
 
         [Column("CodeMoi")]
         public string? MaCode { get; set; } = "40";
@@ -37,8 +43,26 @@ namespace DONGHONUOC_API.Models
         [Column("HinhAnh")]
         public string? HinhAnh { get; set; }
 
+        [Column("TienNuoc")]
+        public long? TienNuoc { get; set; }
+
+        [Column("BVMT")]
+        public int? BVMT { get; set; }
+
+        [Column("Thue")]
+        public int? Thue { get; set; }
+
+        [Column("BVMT_Thue")]
+        public int? ThueTDVTN { get; set; }
+
+        [Column("TongTien")]
+        public long? TongTien { get; set; }
+
         [Column("GhiChuDS")]
         public string? GhiChu { get; set; }
+
+        [Column("GhiChuKH")]
+        public string? GhiChuKH { get; set; }
 
         [Column("TrangThai_API")]
         public int? TrangThai { get; set; }
