@@ -27,7 +27,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ứng dụng cần quyền truy cập thư viện ảnh để đính kèm vào kết quả đọc số.",
+          "cameraPermission": "Ứng dụng cần quyền truy cập camera để chụp ảnh đồng hồ nước."
+        }
+      ]
     ]
   }
 }

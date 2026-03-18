@@ -298,7 +298,6 @@ const GhiNuocScreen = () => {
         }
         await performSave(valInt, silent);
     };
-
     const _takePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
@@ -306,15 +305,26 @@ const GhiNuocScreen = () => {
             return;
         }
 
-        const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.7,
-        });
+        try {
+            console.log('📸 Launching Camera...');
+            const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: false,
+                aspect: [4, 3],
+                quality: 0.8,
+            });
 
-        if (!result.canceled) {
-            setCapturedImage(result.assets[0].uri);
+            console.log('📸 Camera Result:', JSON.stringify(result));
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const uri = result.assets[0].uri;
+                console.log('📸 Photo URI success:', uri);
+                setCapturedImage(uri);
+            } else {
+                console.log('📸 Camera cancelled or no assets');
+            }
+        } catch (e: any) {
+            console.error('📸 Camera Error:', e);
+            Alert.alert('Lỗi Camera', e.message || 'Không thể mở máy ảnh');
         }
     };
 
@@ -325,15 +335,26 @@ const GhiNuocScreen = () => {
             return;
         }
 
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.7,
-        });
+        try {
+            console.log('🖼️ Launching Library...');
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: false,
+                aspect: [4, 3],
+                quality: 0.8,
+            });
 
-        if (!result.canceled) {
-            setCapturedImage(result.assets[0].uri);
+            console.log('🖼️ Library Result:', JSON.stringify(result));
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const uri = result.assets[0].uri;
+                console.log('🖼️ Picked URI success:', uri);
+                setCapturedImage(uri);
+            } else {
+                console.log('🖼️ Library cancelled or no assets');
+            }
+        } catch (e: any) {
+            console.error('🖼️ Library Error:', e);
+            Alert.alert('Lỗi Thư viện', e.message || 'Không thể chọn ảnh');
         }
     };
 
@@ -470,8 +491,11 @@ const GhiNuocScreen = () => {
                 ]}
                 onSelect={(val) => {
                     setImageOptionVisible(false);
-                    if (val === 'camera') _takePhoto();
-                    else if (val === 'gallery') _pickImage();
+                    // iOS needs a more significant delay sometimes
+                    setTimeout(() => {
+                        if (val === 'camera') _takePhoto();
+                        else if (val === 'gallery') _pickImage();
+                    }, Platform.OS === 'ios' ? 800 : 100);
                 }}
                 onCancel={() => setImageOptionVisible(false)}
             />
