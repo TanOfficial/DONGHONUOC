@@ -320,12 +320,26 @@ const GhiNuocScreen = () => {
                 console.log('📸 Photo URI success:', uri);
                 Alert.alert('Thành công', 'Đã chụp được ảnh!');
                 setCapturedImage(uri);
+
+                // --- BẮT ĐẦU GỌI AI ĐỌC SỐ ---
+                setLoading(true);
+                const aiResult = await ApiService.docSoTuDongHo(uri);
+                setLoading(false);
+                if (aiResult.success) {
+                    Alert.alert("Kết quả AI", `Số đọc được là: ${aiResult.result}`);
+                    setCsMoi(aiResult.result);
+                    calculateTieuThu(aiResult.result);
+                } else {
+                    Alert.alert("AI không đọc được", aiResult.message);
+                }
+                // --- KẾT THÚC ---
             } else {
                 console.log('📸 Camera cancelled or no assets');
             }
         } catch (e: any) {
             console.error('📸 Camera Error:', e);
             Alert.alert('Lỗi Camera', e.message || 'Không thể mở máy ảnh');
+            setLoading(false);
         }
     };
 
@@ -350,12 +364,26 @@ const GhiNuocScreen = () => {
                 console.log('🖼️ Picked URI success:', uri);
                 Alert.alert('Thành công', 'Đã chọn được ảnh!');
                 setCapturedImage(uri);
+
+                // --- BẮT ĐẦU GỌI AI ĐỌC SỐ ---
+                setLoading(true);
+                const aiResult = await ApiService.docSoTuDongHo(uri);
+                setLoading(false);
+                if (aiResult.success) {
+                    Alert.alert("Kết quả AI", `Số đọc được là: ${aiResult.result}`);
+                    setCsMoi(aiResult.result);
+                    calculateTieuThu(aiResult.result);
+                } else {
+                    Alert.alert("AI không đọc được", aiResult.message);
+                }
+                // --- KẾT THÚC ---
             } else {
                 console.log('🖼️ Library cancelled or no assets');
             }
         } catch (e: any) {
             console.error('🖼️ Library Error:', e);
             Alert.alert('Lỗi Thư viện', e.message || 'Không thể chọn ảnh');
+            setLoading(false);
         }
     };
 

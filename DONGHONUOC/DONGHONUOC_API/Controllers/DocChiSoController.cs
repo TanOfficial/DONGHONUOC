@@ -25,7 +25,7 @@ namespace DONGHONUOC_API.Controllers
             if (lichDoc == null) return NotFound("Không tìm thấy kỳ đọc");
 
             string kyStr = lichDoc.Ky.ToString("D2");
-            var query = _db.DocChiSo.Where(d => d.Nam == lichDoc.Nam && d.Ky == kyStr);
+            var query = _db.DocChiSo.AsNoTracking().Where(d => d.Nam == lichDoc.Nam && d.Ky == kyStr);
 
             if (!string.IsNullOrEmpty(maLoTrinh))
                 query = query.Where(d => d.MaLoTrinh == maLoTrinh);
@@ -111,7 +111,7 @@ namespace DONGHONUOC_API.Controllers
             var keyword = q.ToLower().Trim();
 
             // Tìm trong toàn bộ bảng DocSo, lấy bản ghi gần nhất của mỗi DanhBa
-            var query = _db.DocChiSo
+            var query = _db.DocChiSo.AsNoTracking()
                 .Where(d => d.MaDanhBo.ToLower().Contains(keyword) ||
                             (d.SoNhaMoi != null && d.SoNhaMoi.ToLower().Contains(keyword)) ||
                             (d.SoNhaCu != null && d.SoNhaCu.ToLower().Contains(keyword)) ||
@@ -352,7 +352,7 @@ namespace DONGHONUOC_API.Controllers
         [HttpGet("kydoc")]
         public async Task<ActionResult<List<KyDoc>>> GetKyDoc()
         {
-            return await _db.KyDoc.OrderByDescending(k => k.Nam).ThenByDescending(k => k.Ky).ToListAsync();
+            return await _db.KyDoc.AsNoTracking().OrderByDescending(k => k.Nam).ThenByDescending(k => k.Ky).ToListAsync();
         }
 
         [HttpPost("kydoc")]

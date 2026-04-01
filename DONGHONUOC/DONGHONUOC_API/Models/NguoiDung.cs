@@ -10,15 +10,10 @@ namespace DONGHONUOC_API.Models
         [Column("MaND")]
         public int MaNguoiDung { get; set; }
 
-        [Column("Username")]
         public string Username { get; set; } = "";
-
-        [Column("PasswordHash")]
         public string PasswordHash { get; set; } = "";
-
-        [Column("HoTen")]
         public string HoTen { get; set; } = "";
-
+        
         [Column("DienThoai")]
         public string? SoDienThoai { get; set; }
 
@@ -28,10 +23,9 @@ namespace DONGHONUOC_API.Models
         [Column("Khoa")]
         public bool? Khoa { get; set; }
 
+        public string? Avatar { get; set; }
+
         [NotMapped]
         public bool TrangThai { get => !(Khoa ?? false); set { Khoa = !value; } }
-
-        [Column("Avatar")]
-        public string? Avatar { get; set; }
     }
 }

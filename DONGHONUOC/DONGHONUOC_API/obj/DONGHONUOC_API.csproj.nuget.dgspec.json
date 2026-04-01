@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "D:\\ThucTap\\DONGHONUOC\\DONGHONUOC\\DONGHONUOC_API\\DONGHONUOC_API.csproj": {}
+    "C:\\GitHub\\BAOCAOTHUCTAP\\DONGHONUOC-v3\\DONGHONUOC\\DONGHONUOC_API\\DONGHONUOC_API.csproj": {}
   },
   "projects": {
-    "D:\\ThucTap\\DONGHONUOC\\DONGHONUOC\\DONGHONUOC_API\\DONGHONUOC_API.csproj": {
+    "C:\\GitHub\\BAOCAOTHUCTAP\\DONGHONUOC-v3\\DONGHONUOC\\DONGHONUOC_API\\DONGHONUOC_API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\ThucTap\\DONGHONUOC\\DONGHONUOC\\DONGHONUOC_API\\DONGHONUOC_API.csproj",
+        "projectUniqueName": "C:\\GitHub\\BAOCAOTHUCTAP\\DONGHONUOC-v3\\DONGHONUOC\\DONGHONUOC_API\\DONGHONUOC_API.csproj",
         "projectName": "DONGHONUOC_API",
-        "projectPath": "D:\\ThucTap\\DONGHONUOC\\DONGHONUOC\\DONGHONUOC_API\\DONGHONUOC_API.csproj",
-        "packagesPath": "C:\\Users\\nguye\\.nuget\\packages\\",
-        "outputPath": "D:\\ThucTap\\DONGHONUOC\\DONGHONUOC\\DONGHONUOC_API\\obj\\",
+        "projectPath": "C:\\GitHub\\BAOCAOTHUCTAP\\DONGHONUOC-v3\\DONGHONUOC\\DONGHONUOC_API\\DONGHONUOC_API.csproj",
+        "packagesPath": "C:\\Users\\huynh\\.nuget\\packages\\",
+        "outputPath": "C:\\GitHub\\BAOCAOTHUCTAP\\DONGHONUOC-v3\\DONGHONUOC\\DONGHONUOC_API\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\nguye\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\huynh\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -92,7 +92,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.301/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

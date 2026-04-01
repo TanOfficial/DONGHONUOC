@@ -26,7 +26,7 @@ const LoginScreen = () => {
     const [fullname, setFullname] = useState('');
     const [loading, setLoading] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
-    const [serverIp, setServerIp] = useState('192.168.2.102');
+    const [serverIp, setServerIp] = useState('192.168.1.144');
     const [tempIp, setTempIp] = useState('');
 
     useEffect(() => {

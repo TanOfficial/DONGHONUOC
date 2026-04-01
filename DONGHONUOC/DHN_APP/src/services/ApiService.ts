@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // In a real app, this would be in a .env file
 // 10.0.2.2 = address emulator uses to reach host machine's localhost
 // Using detected local IP for physical device (iPhone/Android) connectivity
-const DEFAULT_IP = '192.168.1.139';
+const DEFAULT_IP = '192.168.1.144';
 const PORT = '5000';
 const TIMEOUT_MS = 10000; // 10 seconds
 
@@ -326,6 +326,38 @@ class ApiService {
         } catch (e) {
             console.error('❌ Lỗi thống kê:', e);
             return null;
+        }
+    }
+
+    public async docSoTuDongHo(imageUri: string) {
+        // Build FormData
+        let formData = new FormData();
+        formData.append('file', {
+            uri: imageUri,
+            name: 'photo.jpg',
+            type: 'image/jpeg',
+        } as any);
+
+        // We use the same IP as DEFAULT_IP, but port 8000 for the Python AI server.
+        // Or you can extract the IP from this.baseUrl if it's dynamic.
+        const ipMatch = this.baseUrl.match(/\/\/([0-9\.]+):/);
+        const serverIp = ipMatch ? ipMatch[1] : DEFAULT_IP;
+        
+        try {
+            const response = await fetch(`http://${serverIp}:8000/api/doc-so`, {
+                method: 'POST',
+                body: formData,
+            });
+            const responseJson = await response.json();
+            
+            if (responseJson.success) {
+                return { success: true, result: responseJson.result };
+            } else {
+                return { success: false, message: responseJson.message };
+            }
+        } catch (error) {
+            console.error('AI Server Error:', error);
+            return { success: false, message: 'Không thể kết nối với Server AI (Kiểm tra lại IP hoặc WiFi)' };
         }
     }
 
