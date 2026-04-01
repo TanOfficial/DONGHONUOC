@@ -564,6 +564,8 @@ function LichDocSoTab() {
 
     const handleAdd = async () => {
         if (!formData.ky || !formData.nam) return alert("Vui lòng nhập Kỳ và Năm");
+        if (formData.tuNgay && formData.denNgay && formData.tuNgay > formData.denNgay)
+            return alert("Từ Ngày phải nhỏ hơn hoặc bằng Đến Ngày!");
         try {
             await axios.post(`${API_BASE_URL}/DocChiSo/kydoc`, {
                 ky: parseInt(formData.ky),
@@ -582,6 +584,8 @@ function LichDocSoTab() {
 
     const handleUpdate = async () => {
         if (!formData.id) return alert("Vui lòng chọn một kỳ để sửa");
+        if (formData.tuNgay && formData.denNgay && formData.tuNgay > formData.denNgay)
+            return alert("Từ Ngày phải nhỏ hơn hoặc bằng Đến Ngày!");
         try {
             await axios.put(`${API_BASE_URL}/DocChiSo/kydoc/${formData.id}`, {
                 maKyDoc: formData.id,
@@ -646,11 +650,11 @@ function LichDocSoTab() {
                 </fieldset>
 
                 {/* Danh sach Ky */}
-                <fieldset className="border border-gray-300 rounded-md p-0 flex-1 flex flex-col relative overflow-hidden h-0">
-                    <legend className="px-2 text-gray-600 font-medium ml-4 bg-white relative z-10 block w-fit">Danh Sách Kỳ</legend>
-                    <div className="overflow-auto flex-1 mt-1 -mt-3 pt-3">
+                <div className="border border-gray-300 rounded-md flex-1 flex flex-col overflow-hidden h-0">
+                    <div className="bg-gray-50 border-b border-gray-300 px-3 py-1.5 text-gray-600 font-medium text-sm shrink-0">Danh Sách Kỳ</div>
+                    <div className="overflow-auto flex-1">
                         <table className="w-full text-left border-collapse whitespace-nowrap">
-                            <thead className="bg-gray-100 sticky top-0 shadow-sm z-10 border-b border-t border-gray-300">
+                            <thead className="bg-gray-100 sticky top-0 shadow-sm z-10 border-b border-gray-300">
                                 <tr>
                                     <th className="w-6 border-r border-gray-300 bg-gray-200"></th>
                                     <th className="border-r border-gray-300 px-2 py-1.5 font-medium text-gray-700 w-12 text-center">Kỳ</th>
@@ -668,7 +672,7 @@ function LichDocSoTab() {
                                     const isSelected = (selectedKy?.MaKyDoc || selectedKy?.maKyDoc) === rId;
                                     return (
                                         <tr key={rId} onClick={() => handleSelect(row)} className={`border-b border-gray-200 cursor-pointer ${isSelected ? 'bg-[#2196F3] text-white' : 'hover:bg-[#e3f2fd] text-gray-800'}`}>
-                                            <td className={`border-r bg-gray-100 text-center text-xs ${isSelected ? 'text-[#2196F3]' : 'text-transparent'}`}>▶</td>
+                                            <td className={`border-r bg-gray-100 text-center text-xs ${isSelected ? 'text-[#2196F3]' : 'text-transparent'}`}>►</td>
                                             <td className={`border-r px-2 py-1 text-center ${isSelected ? 'border-[#1976D2]' : 'border-gray-200'}`}>{rKy}</td>
                                             <td className={`border-r px-2 py-1 text-center ${isSelected ? 'border-[#1976D2]' : 'border-gray-200'}`}>{rNam}</td>
                                             <td className={`px-2 py-1 text-center ${isSelected ? 'border-[#1976D2]' : 'border-gray-200'}`}>{rTen}</td>
@@ -678,16 +682,16 @@ function LichDocSoTab() {
                             </tbody>
                         </table>
                     </div>
-                </fieldset>
+                </div>
 
             </div>
 
             {/* Right Column (Chi tiet Dot) */}
-            <fieldset className="border border-gray-300 rounded-md p-0 flex-1 flex flex-col relative overflow-hidden">
-                <legend className="px-2 text-gray-600 font-medium ml-4 bg-white relative z-10 block w-fit">Chi Tiết 15 Đợt Trong Kỳ</legend>
-                <div className="overflow-auto flex-1 mt-1 -mt-3 pt-3">
+            <div className="border border-gray-300 rounded-md flex-1 flex flex-col overflow-hidden">
+                <div className="bg-gray-50 border-b border-gray-300 px-3 py-1.5 text-gray-600 font-medium text-sm shrink-0">Chi Tiết 15 Đợt Trong Kỳ</div>
+                <div className="overflow-auto flex-1">
                     <table className="w-full text-left border-collapse whitespace-nowrap">
-                        <thead className="bg-gray-100 sticky top-0 shadow-sm z-10 border-b border-t border-gray-300">
+                        <thead className="bg-gray-100 sticky top-0 shadow-sm z-10 border-b border-gray-300">
                             <tr>
                                 <th className="w-8 border-r border-gray-300 bg-gray-200"></th>
                                 <th className="border-r border-gray-300 px-3 py-2 font-medium text-gray-700 w-16 text-center">Đợt</th>
@@ -708,20 +712,20 @@ function LichDocSoTab() {
                             {!dotLoading && chiTietDot.map((row, idx) => (
                                 <tr key={idx} className="border-b border-gray-200 hover:bg-[#e3f2fd] transition-colors">
                                     <td className="border-r border-gray-200 bg-gray-100 text-center text-gray-400 text-xs"></td>
-                                    <td className="border-r border-gray-200 px-3 py-1.5 text-center font-medium">{row.dot}</td>
-                                    <td className="border-r border-gray-200 px-3 py-1.5 text-gray-700">{row.ngayDoc}</td>
-                                    <td className="border-r border-gray-200 px-3 py-1.5 text-gray-700">{row.ngayKiemSoat}</td>
-                                    <td className="border-r border-gray-200 px-3 py-1.5 text-gray-700">{row.ngayChuyenListing}</td>
-                                    <td className="border-r border-gray-200 px-3 py-1.5 text-gray-700">{row.ngayThuTien}</td>
+                                    <td className="border-r border-gray-200 px-3 py-1.5 text-center font-medium">{row.Dot}</td>
+                                    <td className="border-r border-gray-200 px-3 py-1.5 text-gray-700">{row.NgayDoc}</td>
+                                    <td className="border-r border-gray-200 px-3 py-1.5 text-gray-700">{row.NgayKiemSoat}</td>
+                                    <td className="border-r border-gray-200 px-3 py-1.5 text-gray-700">{row.NgayChuyenListing}</td>
+                                    <td className="border-r border-gray-200 px-3 py-1.5 text-gray-700">{row.NgayThuTien}</td>
                                     <td className="p-1 px-3 text-center">
-                                        <input type="checkbox" defaultChecked={row.kiemTraNgayDoc} className="w-4 h-4 text-[#2196F3] rounded cursor-pointer accent-[#2196F3]" />
+                                        <input type="checkbox" defaultChecked={row.KiemTraNgayDoc} className="w-4 h-4 text-[#2196F3] rounded cursor-pointer accent-[#2196F3]" />
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
-            </fieldset>
+            </div>
 
         </div>
     );

@@ -358,6 +358,8 @@ namespace DONGHONUOC_API.Controllers
         [HttpPost("kydoc")]
         public async Task<ActionResult<KyDoc>> PostKyDoc([FromBody] KyDoc kyDoc)
         {
+            if (kyDoc.TuNgay.HasValue && kyDoc.DenNgay.HasValue && kyDoc.TuNgay > kyDoc.DenNgay)
+                return BadRequest("Từ Ngày phải nhỏ hơn hoặc bằng Đến Ngày.");
             _db.KyDoc.Add(kyDoc);
             await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(GetKyDoc), new { id = kyDoc.MaKyDoc }, kyDoc);
@@ -367,6 +369,8 @@ namespace DONGHONUOC_API.Controllers
         public async Task<IActionResult> PutKyDoc(int id, [FromBody] KyDoc kyDoc)
         {
             if (id != kyDoc.MaKyDoc) return BadRequest("ID không khớp");
+            if (kyDoc.TuNgay.HasValue && kyDoc.DenNgay.HasValue && kyDoc.TuNgay > kyDoc.DenNgay)
+                return BadRequest("Từ Ngày phải nhỏ hơn hoặc bằng Đến Ngày.");
             _db.Entry(kyDoc).State = EntityState.Modified;
             await _db.SaveChangesAsync();
             return NoContent();
@@ -453,7 +457,10 @@ namespace DONGHONUOC_API.Controllers
 
             DateTime tuNgay = kyDoc.TuNgay ?? new DateTime(kyDoc.Nam, kyDoc.Ky, 1);
             DateTime denNgay = kyDoc.DenNgay ?? tuNgay.AddDays(29);
+            // Guard against inverted dates
+            if (denNgay < tuNgay) denNgay = tuNgay.AddDays(29);
             double totalDays = (denNgay - tuNgay).TotalDays;
+            if (totalDays <= 0) totalDays = 29;
             double dayPerDot = totalDays / soBot;
 
             for (int i = 0; i < soBot; i++)
