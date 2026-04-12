@@ -25,7 +25,7 @@ namespace DHN_WF.Controls
                 dgvKyList.Rows.Clear();
                 foreach (var k in _kyDocs)
                 {
-                    dgvKyList.Rows.Add("►", k.Ky, k.Nam, k.TenKyDoc ?? $"Tháng {k.Ky}/{k.Nam}");
+                    dgvKyList.Rows.Add("►", k.Ky.ToString("D2"), k.Nam, k.TenKyDoc ?? $"Tháng {k.Ky}/{k.Nam}");
                     dgvKyList.Rows[dgvKyList.RowCount - 1].Tag = k;
                 }
                 // Select first
@@ -72,7 +72,7 @@ namespace DHN_WF.Controls
             {
                 var dots = await _api.GetChiTietDotAsync(maKyDoc);
                 foreach (var d in dots)
-                    dgvChiTiet.Rows.Add("", d.Dot, d.NgayDoc, d.NgayKiemSoat, d.NgayChuyenListing, d.NgayThuTien, d.KiemTraNgayDoc);
+                    dgvChiTiet.Rows.Add(d.Dot, d.NgayDoc, d.NgayKiemSoat, d.NgayChuyenListing, d.NgayThuTien, d.KiemTraNgayDoc);
             }
             catch (Exception ex)
             {

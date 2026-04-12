@@ -102,6 +102,8 @@ namespace DHN_WF.Forms
 
             // btnDangXuat
             this.btnDangXuat.Text = "Đăng xuất";
+            this.btnDangXuat.BorderRadius = 8;
+            this.btnDangXuat.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             this.btnDangXuat.BackColor = DHN_WF.CustomUI.UIConstants.DangerColor;
             this.btnDangXuat.ForeColor = Color.White;
             this.btnDangXuat.HoverColor = DHN_WF.CustomUI.UIConstants.DangerHover;

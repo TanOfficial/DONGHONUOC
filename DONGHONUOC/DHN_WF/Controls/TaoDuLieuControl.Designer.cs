@@ -32,8 +32,8 @@ namespace DHN_WF.Controls
 
             // panelTop
             this.panelTop.Dock = DockStyle.Top;
-            this.panelTop.Height = 60;
-            this.panelTop.Padding = new Padding(10);
+            this.panelTop.Height = 56;
+            this.panelTop.Padding = new Padding(8);
             this.panelTop.Controls.Add(this.lblDuongDan);
             this.panelTop.Controls.Add(this.txtFilePath);
             this.panelTop.Controls.Add(this.btnChonFile);
@@ -41,34 +41,40 @@ namespace DHN_WF.Controls
 
             // lblDuongDan
             this.lblDuongDan.Text = "Đường Dẫn:";
-            this.lblDuongDan.Font = new Font("Segoe UI", 9, FontStyle.Regular);
+            this.lblDuongDan.Font = new Font("Segoe UI", 9.5F);
             this.lblDuongDan.ForeColor = Color.FromArgb(55, 65, 81);
             this.lblDuongDan.AutoSize = false;
-            this.lblDuongDan.Size = new Size(90, 30);
-            this.lblDuongDan.Location = new Point(0, 3);
+            this.lblDuongDan.Size = new Size(85, 32);
+            this.lblDuongDan.Location = new Point(10, 12);
             this.lblDuongDan.TextAlign = ContentAlignment.MiddleLeft;
 
             // txtFilePath
             this.txtFilePath.ReadOnly = true;
             this.txtFilePath.PlaceholderText = "Chưa chọn file...";
             this.txtFilePath.BackColor = Color.FromArgb(249, 250, 251);
-            this.txtFilePath.Font = new Font("Segoe UI", 9);
-            this.txtFilePath.Size = new Size(280, 28);
-            this.txtFilePath.Location = new Point(96, 4);
+            this.txtFilePath.Font = new Font("Segoe UI", 9.5F);
+            this.txtFilePath.Size = new Size(300, 26);
+            this.txtFilePath.Location = new Point(100, 15);
 
             // btnChonFile
-            this.btnChonFile.Text = "Chọn File Biến Động";
-            this.btnChonFile.Location = new Point(390, 4);
-            this.btnChonFile.BackColor = DHN_WF.CustomUI.UIConstants.SurfaceColor;
+            this.btnChonFile.Text = "Chọn File";
+            this.btnChonFile.BorderRadius = 8;
+            this.btnChonFile.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            this.btnChonFile.Location = new Point(410, 12);
+            this.btnChonFile.Size = new Size(120, 32);
+            this.btnChonFile.BackColor = Color.FromArgb(245, 247, 250);
             this.btnChonFile.ForeColor = DHN_WF.CustomUI.UIConstants.PrimaryColor;
-            this.btnChonFile.HoverColor = Color.FromArgb(240, 240, 240);
-            this.btnChonFile.PressedColor = Color.FromArgb(220, 220, 220);
+            this.btnChonFile.HoverColor = Color.FromArgb(227, 242, 253);
+            this.btnChonFile.PressedColor = Color.FromArgb(187, 222, 251);
             this.btnChonFile.Cursor = Cursors.Hand;
             this.btnChonFile.Click += new EventHandler(this.BtnChonFile_Click);
 
             // btnThemFile
-            this.btnThemFile.Text = "Thêm File Biến Động";
-            this.btnThemFile.Location = new Point(560, 4);
+            this.btnThemFile.Text = "Thêm Biến Động";
+            this.btnThemFile.BorderRadius = 8;
+            this.btnThemFile.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            this.btnThemFile.Location = new Point(540, 12);
+            this.btnThemFile.Size = new Size(140, 32);
             this.btnThemFile.BackColor = DHN_WF.CustomUI.UIConstants.PrimaryColor;
             this.btnThemFile.HoverColor = DHN_WF.CustomUI.UIConstants.PrimaryHover;
             this.btnThemFile.PressedColor = DHN_WF.CustomUI.UIConstants.PrimaryPressed;
@@ -96,8 +102,8 @@ namespace DHN_WF.Controls
 
             // panelFilter
             this.panelFilter.Dock = DockStyle.Top;
-            this.panelFilter.Height = 50;
-            this.panelFilter.Padding = new Padding(0, 10, 0, 10);
+            this.panelFilter.Height = 44;
+            this.panelFilter.Padding = new Padding(0, 6, 0, 6);
             this.panelFilter.Controls.Add(this.lblTheoKy);
             this.panelFilter.Controls.Add(this.cboKy);
             this.panelFilter.Controls.Add(this.btnXem);
@@ -105,27 +111,29 @@ namespace DHN_WF.Controls
 
             // lblTheoKy
             this.lblTheoKy.Text = "Theo Kỳ Đọc:";
-            this.lblTheoKy.Font = new Font("Segoe UI", 9);
+            this.lblTheoKy.Font = new Font("Segoe UI", 9.5F);
             this.lblTheoKy.ForeColor = Color.FromArgb(55, 65, 81);
             this.lblTheoKy.AutoSize = false;
-            this.lblTheoKy.Size = new Size(90, 28);
-            this.lblTheoKy.Location = new Point(0, 4);
+            this.lblTheoKy.Size = new Size(90, 30);
+            this.lblTheoKy.Location = new Point(0, 1);
             this.lblTheoKy.TextAlign = ContentAlignment.MiddleLeft;
 
             // cboKy
             this.cboKy.DropDownStyle = ComboBoxStyle.DropDownList;
-            this.cboKy.Font = new Font("Segoe UI", 9);
+            this.cboKy.Font = new Font("Segoe UI", 9.5F);
             this.cboKy.Size = new Size(180, 28);
-            this.cboKy.Location = new Point(96, 4);
+            this.cboKy.Location = new Point(96, 3);
 
             // btnXem
             this.btnXem.Text = "Xem Dữ Liệu";
-            this.btnXem.Location = new Point(284, 4);
-            this.btnXem.Size = new Size(120, 32);
-            this.btnXem.BackColor = DHN_WF.CustomUI.UIConstants.SurfaceColor;
+            this.btnXem.BorderRadius = 8;
+            this.btnXem.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            this.btnXem.Location = new Point(284, 1);
+            this.btnXem.Size = new Size(110, 30);
+            this.btnXem.BackColor = Color.FromArgb(245, 247, 250);
             this.btnXem.ForeColor = DHN_WF.CustomUI.UIConstants.PrimaryColor;
-            this.btnXem.HoverColor = Color.FromArgb(240, 240, 240);
-            this.btnXem.PressedColor = Color.FromArgb(220, 220, 220);
+            this.btnXem.HoverColor = Color.FromArgb(227, 242, 253);
+            this.btnXem.PressedColor = Color.FromArgb(187, 222, 251);
             this.btnXem.Cursor = Cursors.Hand;
             this.btnXem.Click += new EventHandler(this.BtnXem_Click);
 
@@ -135,8 +143,8 @@ namespace DHN_WF.Controls
             this.lblThongKe.ForeColor = Color.FromArgb(75, 85, 99);
             this.lblThongKe.BackColor = Color.FromArgb(243, 244, 246);
             this.lblThongKe.AutoSize = false;
-            this.lblThongKe.Size = new Size(350, 28);
-            this.lblThongKe.Location = new Point(402, 4);
+            this.lblThongKe.Size = new Size(350, 30);
+            this.lblThongKe.Location = new Point(402, 1);
             this.lblThongKe.TextAlign = ContentAlignment.MiddleLeft;
             this.lblThongKe.Padding = new Padding(8, 0, 0, 0);
 

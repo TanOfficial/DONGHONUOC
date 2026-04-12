@@ -46,7 +46,7 @@ namespace DHN_WF.Controls
             this.panelTop.Dock = System.Windows.Forms.DockStyle.Top;
             this.panelTop.Location = new System.Drawing.Point(0, 0);
             this.panelTop.Name = "panelTop";
-            this.panelTop.Size = new System.Drawing.Size(950, 70);
+            this.panelTop.Size = new System.Drawing.Size(950, 60);
             this.panelTop.TabIndex = 0;
             // 
             // btnChot
@@ -55,22 +55,26 @@ namespace DHN_WF.Controls
             this.btnChot.ForeColor = System.Drawing.Color.White;
             this.btnChot.HoverColor = DHN_WF.CustomUI.UIConstants.SuccessHover;
             this.btnChot.PressedColor = DHN_WF.CustomUI.UIConstants.SuccessPressed;
-            this.btnChot.Location = new System.Drawing.Point(740, 20);
+            this.btnChot.BorderRadius = 8;
+            this.btnChot.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.btnChot.Location = new System.Drawing.Point(740, 12);
             this.btnChot.Name = "btnChot";
-            this.btnChot.Size = new System.Drawing.Size(180, 40);
+            this.btnChot.Size = new System.Drawing.Size(180, 36);
             this.btnChot.TabIndex = 4;
             this.btnChot.Text = "Chốt Hóa Đơn Kỳ Này";
             this.btnChot.Click += new System.EventHandler(this.BtnChot_Click);
             // 
             // btnXem
             // 
-            this.btnXem.BackColor = DHN_WF.CustomUI.UIConstants.SurfaceColor;
+            this.btnXem.BackColor = System.Drawing.Color.FromArgb(245, 247, 250);
             this.btnXem.ForeColor = DHN_WF.CustomUI.UIConstants.PrimaryColor;
-            this.btnXem.HoverColor = System.Drawing.Color.FromArgb(240, 240, 240);
-            this.btnXem.PressedColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            this.btnXem.Location = new System.Drawing.Point(610, 20);
+            this.btnXem.HoverColor = System.Drawing.Color.FromArgb(227, 242, 253);
+            this.btnXem.PressedColor = System.Drawing.Color.FromArgb(187, 222, 251);
+            this.btnXem.BorderRadius = 8;
+            this.btnXem.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.btnXem.Location = new System.Drawing.Point(610, 12);
             this.btnXem.Name = "btnXem";
-            this.btnXem.Size = new System.Drawing.Size(120, 40);
+            this.btnXem.Size = new System.Drawing.Size(120, 36);
             this.btnXem.TabIndex = 3;
             this.btnXem.Text = "Tải Dữ Liệu";
             this.btnXem.Click += new System.EventHandler(this.BtnXem_Click);
@@ -79,7 +83,7 @@ namespace DHN_WF.Controls
             // 
             this.lblKy.AutoSize = true;
             this.lblKy.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.lblKy.Location = new System.Drawing.Point(320, 26);
+            this.lblKy.Location = new System.Drawing.Point(320, 20);
             this.lblKy.Name = "lblKy";
             this.lblKy.Size = new System.Drawing.Size(55, 19);
             this.lblKy.TabIndex = 2;
@@ -90,9 +94,9 @@ namespace DHN_WF.Controls
             this.cboKy.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cboKy.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.cboKy.FormattingEnabled = true;
-            this.cboKy.Location = new System.Drawing.Point(390, 23);
+            this.cboKy.Location = new System.Drawing.Point(390, 16);
             this.cboKy.Name = "cboKy";
-            this.cboKy.Size = new System.Drawing.Size(200, 25);
+            this.cboKy.Size = new System.Drawing.Size(200, 28);
             this.cboKy.TabIndex = 1;
             // 
             // lblTitle
@@ -100,7 +104,7 @@ namespace DHN_WF.Controls
             this.lblTitle.AutoSize = true;
             this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.lblTitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(31)))), ((int)(((byte)(41)))), ((int)(((byte)(55)))));
-            this.lblTitle.Location = new System.Drawing.Point(20, 20);
+            this.lblTitle.Location = new System.Drawing.Point(20, 14);
             this.lblTitle.Name = "lblTitle";
             this.lblTitle.Size = new System.Drawing.Size(252, 30);
             this.lblTitle.TabIndex = 0;
@@ -114,7 +118,7 @@ namespace DHN_WF.Controls
             this.dgvData.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.dgvData.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dgvData.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.dgvData.Location = new System.Drawing.Point(0, 70);
+            this.dgvData.Location = new System.Drawing.Point(0, 60);
             this.dgvData.Name = "dgvData";
             this.dgvData.ReadOnly = true;
             this.dgvData.RowTemplate.Height = 30;

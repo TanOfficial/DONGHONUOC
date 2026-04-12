@@ -61,7 +61,7 @@ namespace DHN_WF.Controls
 
             // splitMain
             this.splitMain.Dock = DockStyle.Fill;
-            this.splitMain.SplitterDistance = 350;
+            this.splitMain.SplitterDistance = 320;
             this.splitMain.Panel1.BackColor = Color.FromArgb(249, 250, 251); 
             this.splitMain.Panel1.Padding = new Padding(15);
             this.splitMain.Panel1.Controls.Add(this.panelFormWrapper);
@@ -160,17 +160,19 @@ namespace DHN_WF.Controls
             this.panelButtons.Size = new Size(280, 40); 
             
             this.btnHuy.Text = "Hủy"; this.btnHuy.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+            this.btnHuy.BorderRadius = 8;
             this.btnHuy.BackColor = Color.White; this.btnHuy.ForeColor = Color.FromArgb(107, 114, 128);
             this.btnHuy.HoverColor = Color.FromArgb(243, 244, 246);
             this.btnHuy.PressedColor = Color.FromArgb(229, 231, 235);
-            this.btnHuy.Size = new Size(80, 40); this.btnHuy.Location = new Point(0, 0); this.btnHuy.Cursor = Cursors.Hand;
+            this.btnHuy.Size = new Size(80, 36); this.btnHuy.Location = new Point(0, 0); this.btnHuy.Cursor = Cursors.Hand;
             this.btnHuy.Visible = false; this.btnHuy.Click += new EventHandler(this.BtnHuy_Click);
             
             this.btnLuu.Text = "Tạo Tài Khoản"; this.btnLuu.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+            this.btnLuu.BorderRadius = 8;
             this.btnLuu.BackColor = DHN_WF.CustomUI.UIConstants.PrimaryColor; this.btnLuu.ForeColor = Color.White;
             this.btnLuu.HoverColor = DHN_WF.CustomUI.UIConstants.PrimaryHover;
             this.btnLuu.PressedColor = DHN_WF.CustomUI.UIConstants.PrimaryPressed;
-            this.btnLuu.Size = new Size(190, 40); this.btnLuu.Location = new Point(90, 0); this.btnLuu.Cursor = Cursors.Hand;
+            this.btnLuu.Size = new Size(190, 36); this.btnLuu.Location = new Point(90, 0); this.btnLuu.Cursor = Cursors.Hand;
             this.btnLuu.Click += new EventHandler(this.BtnLuu_Click);
             this.panelButtons.Controls.AddRange(new Control[] { btnHuy, btnLuu });
             y += 50;

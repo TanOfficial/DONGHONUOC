@@ -8,7 +8,7 @@ namespace DHN_WF.CustomUI
 {
     public class ModernButton : Button
     {
-        private int _borderRadius = 12;
+        private int _borderRadius = 8;
         private Color _originalBackColor;
         private Color _hoverColor = UIConstants.PrimaryHover;
         private Color _pressedColor = UIConstants.PrimaryPressed;
@@ -17,6 +17,10 @@ namespace DHN_WF.CustomUI
 
         public ModernButton()
         {
+            this.SetStyle(ControlStyles.UserPaint | 
+                         ControlStyles.OptimizedDoubleBuffer | 
+                         ControlStyles.AllPaintingInWmPaint | 
+                         ControlStyles.SupportsTransparentBackColor, true);
             this.FlatStyle = FlatStyle.Flat;
             this.FlatAppearance.BorderSize = 0;
             this.Size = new Size(150, 40);
@@ -32,8 +36,14 @@ namespace DHN_WF.CustomUI
             this.MouseUp += (s, e) => { _isPressed = false; Invalidate(); };
         }
 
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            UpdateRegion();
+        }
+
         [Category("Appearance")]
-        [DefaultValue(12)]
+        [DefaultValue(8)]
         [Browsable(true)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public int BorderRadius
@@ -90,35 +100,57 @@ namespace DHN_WF.CustomUI
             return path;
         }
 
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            UpdateRegion();
+        }
+
+        private void UpdateRegion()
+        {
+            if (_borderRadius > 2)
+            {
+                using (GraphicsPath path = GetRoundPath(new RectangleF(0, 0, this.Width, this.Height), _borderRadius))
+                {
+                    this.Region = new Region(path);
+                }
+            }
+            else
+            {
+                this.Region = new Region(new RectangleF(0, 0, this.Width, this.Height));
+            }
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs pevent)
+        {
+            // Do nothing to prevent flickering and standard background painting
+        }
+
         protected override void OnPaint(PaintEventArgs pevent)
         {
-            pevent.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            pevent.Graphics.SmoothingMode = SmoothingMode.HighQuality;
+            pevent.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
 
             // Determine Background Color
             Color drawColor = _originalBackColor;
             if (_isPressed) drawColor = _pressedColor;
             else if (_isHovering) drawColor = _hoverColor;
 
-            RectangleF rectSurface = new RectangleF(0, 0, this.Width, this.Height);
-            
-            // Background Area
-            if (_borderRadius > 2)
+            // Clear background with parent's color to ensure smooth edges
+            if (this.Parent != null)
             {
-                using (GraphicsPath pathSurface = GetRoundPath(rectSurface, _borderRadius))
-                using (SolidBrush brushSurface = new SolidBrush(drawColor))
+                using (SolidBrush parentBrush = new SolidBrush(this.Parent.BackColor))
                 {
-                    // Update the Region for clicking constraints
-                    this.Region = new Region(pathSurface);
-                    pevent.Graphics.FillPath(brushSurface, pathSurface);
+                    pevent.Graphics.FillRectangle(parentBrush, this.ClientRectangle);
                 }
             }
-            else
+
+            RectangleF rectSurface = new RectangleF(0, 0, this.Width, this.Height);
+            
+            using (GraphicsPath pathSurface = GetRoundPath(rectSurface, _borderRadius))
+            using (SolidBrush brushSurface = new SolidBrush(drawColor))
             {
-                this.Region = new Region(rectSurface);
-                using (SolidBrush brushSurface = new SolidBrush(drawColor))
-                {
-                    pevent.Graphics.FillRectangle(brushSurface, rectSurface);
-                }
+                pevent.Graphics.FillPath(brushSurface, pathSurface);
             }
 
             // Draw Text
