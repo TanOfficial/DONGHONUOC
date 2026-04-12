@@ -10,9 +10,9 @@ namespace DONGHONUOC_API.Models
         [Column("MaND")]
         public int MaNguoiDung { get; set; }
 
-        public string Username { get; set; } = "";
-        public string PasswordHash { get; set; } = "";
-        public string HoTen { get; set; } = "";
+        public string? Username { get; set; }
+        public string? PasswordHash { get; set; }
+        public string? HoTen { get; set; }
         
         [Column("DienThoai")]
         public string? SoDienThoai { get; set; }

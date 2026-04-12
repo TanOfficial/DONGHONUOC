@@ -1,11 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "aM/saApQFPY=",
+  "dgSpecHash": "VwTl3Ur+sTE=",
   "success": true,
   "projectFilePath": "D:\\ThucTap\\DONGHONUOC\\DONGHONUOC\\DONGHONUOC_API\\DONGHONUOC_API.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\nguye\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",
     "C:\\Users\\nguye\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",
+    "C:\\Users\\nguye\\.nuget\\packages\\bcrypt.net-next\\4.1.0\\bcrypt.net-next.4.1.0.nupkg.sha512",
     "C:\\Users\\nguye\\.nuget\\packages\\epplus\\7.5.3\\epplus.7.5.3.nupkg.sha512",
     "C:\\Users\\nguye\\.nuget\\packages\\epplus.interfaces\\7.5.0\\epplus.interfaces.7.5.0.nupkg.sha512",
     "C:\\Users\\nguye\\.nuget\\packages\\epplus.system.drawing\\7.5.0\\epplus.system.drawing.7.5.0.nupkg.sha512",

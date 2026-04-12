@@ -4,6 +4,7 @@ using DONGHONUOC_API.Data;
 using DONGHONUOC_API.Models;
 using System.Security.Cryptography;
 using System.Text;
+using BCrypt.Net;
 
 namespace DONGHONUOC_API.Controllers
 {
@@ -24,14 +25,33 @@ namespace DONGHONUOC_API.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
         {
-            var hash = HashPassword(request.Password);
-
             var user = await _db.NguoiDung
-                .FirstOrDefaultAsync(u => u.Username == request.Username
-                                      && u.PasswordHash == hash
-                                      && u.Khoa != true);
+                .FirstOrDefaultAsync(u => u.Username == request.Username && u.Khoa != true);
 
             if (user == null)
+            {
+                return Ok(new LoginResponse { Success = false, Message = "Sai tài khoản hoặc mật khẩu!" });
+            }
+
+            bool isValid = false;
+            // Check if it is a BCrypt hash (usually starts with $2a$, $2b$, or $2y$)
+            if (user.PasswordHash != null && user.PasswordHash.StartsWith("$2") && user.PasswordHash.Length > 50)
+            {
+                isValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+            }
+            else
+            {
+                // Legacy SHA256 verification
+                if (user.PasswordHash == HashPasswordLegacy(request.Password))
+                {
+                    isValid = true;
+                    // Auto-upgrade password hash to BCrypt seamlessly
+                    user.PasswordHash = HashPassword(request.Password);
+                    await _db.SaveChangesAsync();
+                }
+            }
+
+            if (!isValid)
             {
                 return Ok(new LoginResponse
                 {
@@ -136,6 +156,11 @@ namespace DONGHONUOC_API.Controllers
         }
 
         private static string HashPassword(string password)
+        {
+            return BCrypt.Net.BCrypt.HashPassword(password, 12);
+        }
+
+        private static string HashPasswordLegacy(string password)
         {
             var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
             return Convert.ToHexStringLower(bytes);
