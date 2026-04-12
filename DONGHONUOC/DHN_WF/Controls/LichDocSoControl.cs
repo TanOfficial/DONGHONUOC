@@ -12,6 +12,8 @@ namespace DHN_WF.Controls
         public LichDocSoControl()
         {
             InitializeComponent();
+            DHN_WF.CustomUI.UIConstants.StyleModernGrid(this.dgvKyList);
+            DHN_WF.CustomUI.UIConstants.StyleModernGrid(this.dgvChiTiet);
             this.Load += async (s, e) => await LoadKyDocs();
         }
 

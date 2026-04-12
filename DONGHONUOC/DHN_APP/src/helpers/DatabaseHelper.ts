@@ -28,6 +28,8 @@ class DatabaseHelper {
         hinh_anh TEXT,
         trang_thai INTEGER DEFAULT 0,
         ma_lo_trinh TEXT,
+        dot TEXT,
+        may TEXT,
         ma_ky_doc INTEGER,
         hieu TEXT,
         co TEXT,
@@ -66,14 +68,20 @@ class DatabaseHelper {
         // Migration for existing DB
         try {
             await this.db.execAsync('ALTER TABLE khach_hang ADD COLUMN ma_ky_doc INTEGER;');
-        } catch (e) {
-            // Already exists or ignore
-        }
+        } catch (e) { }
+        try {
+            await this.db.execAsync('ALTER TABLE khach_hang ADD COLUMN dot TEXT;');
+        } catch (e) { }
+        try {
+            await this.db.execAsync('ALTER TABLE khach_hang ADD COLUMN may TEXT;');
+        } catch (e) { }
     }
 
     public async luuDanhSachKhachHang(customers: any[], maKyDoc: number) {
         if (!this.db) await this.init();
         await this.db!.withTransactionAsync(async () => {
+            // Xóa dữ liệu cũ của kỳ này trước khi lưu mới
+            await this.db!.runAsync('DELETE FROM khach_hang WHERE ma_ky_doc = ?', [maKyDoc]);
             for (const c of customers) {
                 // Fetch existing to preserve name if current batch is missing it
                 const existing = await this.db!.getFirstAsync<any>(
@@ -87,12 +95,12 @@ class DatabaseHelper {
                 await this.db!.runAsync(
                     `INSERT OR REPLACE INTO khach_hang (
                         ma_danh_bo, ten_kh, dia_chi, chi_so_cu, chi_so_moi, 
-                        trang_thai, ma_lo_trinh, ma_ky_doc, code, ghi_chu,
+                        trang_thai, ma_lo_trinh, dot, may, ma_ky_doc, code, ghi_chu,
                         hieu, co, so_than, vi_tri, gb, dm, dmhn, tbtt
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
                         c.ma_danh_bo, finalName, finalDiaChi, c.chi_so_cu, c.chi_so_moi || 0,
-                        c.trang_thai || 0, c.ma_lo_trinh, maKyDoc, c.code || '40', c.ghi_chu || '',
+                        c.trang_thai || 0, c.ma_lo_trinh, c.dot, c.may, maKyDoc, c.code || '40', c.ghi_chu || '',
                         c.hieu, c.co, c.so_than, c.vi_tri, c.gb, c.dm, c.dmhn, c.tbtt
                     ]
                 );

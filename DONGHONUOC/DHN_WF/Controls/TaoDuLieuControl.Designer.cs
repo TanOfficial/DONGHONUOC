@@ -14,14 +14,14 @@ namespace DHN_WF.Controls
             this.panelTop = new Panel();
             this.lblDuongDan = new Label();
             this.txtFilePath = new TextBox();
-            this.btnChonFile = new Button();
-            this.btnThemFile = new Button();
+            this.btnChonFile = new DHN_WF.CustomUI.ModernButton();
+            this.btnThemFile = new DHN_WF.CustomUI.ModernButton();
             this.lblUploadMsg = new Label();
             this.grpThongTin = new GroupBox();
             this.panelFilter = new Panel();
             this.lblTheoKy = new Label();
             this.cboKy = new ComboBox();
-            this.btnXem = new Button();
+            this.btnXem = new DHN_WF.CustomUI.ModernButton();
             this.lblThongKe = new Label();
             this.dgvData = new DataGridView();
             this.panelTop.SuspendLayout();
@@ -32,7 +32,8 @@ namespace DHN_WF.Controls
 
             // panelTop
             this.panelTop.Dock = DockStyle.Top;
-            this.panelTop.Height = 36;
+            this.panelTop.Height = 60;
+            this.panelTop.Padding = new Padding(10);
             this.panelTop.Controls.Add(this.lblDuongDan);
             this.panelTop.Controls.Add(this.txtFilePath);
             this.panelTop.Controls.Add(this.btnChonFile);
@@ -57,25 +58,20 @@ namespace DHN_WF.Controls
 
             // btnChonFile
             this.btnChonFile.Text = "Chọn File Biến Động";
-            this.btnChonFile.Font = new Font("Segoe UI", 9);
-            this.btnChonFile.ForeColor = Color.FromArgb(124, 179, 66);
-            this.btnChonFile.BackColor = Color.White;
-            this.btnChonFile.FlatStyle = FlatStyle.Flat;
-            this.btnChonFile.FlatAppearance.BorderColor = Color.FromArgb(139, 195, 74);
-            this.btnChonFile.Size = new Size(160, 28);
-            this.btnChonFile.Location = new Point(382, 4);
+            this.btnChonFile.Location = new Point(390, 4);
+            this.btnChonFile.BackColor = DHN_WF.CustomUI.UIConstants.SurfaceColor;
+            this.btnChonFile.ForeColor = DHN_WF.CustomUI.UIConstants.PrimaryColor;
+            this.btnChonFile.HoverColor = Color.FromArgb(240, 240, 240);
+            this.btnChonFile.PressedColor = Color.FromArgb(220, 220, 220);
             this.btnChonFile.Cursor = Cursors.Hand;
             this.btnChonFile.Click += new EventHandler(this.BtnChonFile_Click);
 
             // btnThemFile
             this.btnThemFile.Text = "Thêm File Biến Động";
-            this.btnThemFile.Font = new Font("Segoe UI", 9, FontStyle.Regular);
-            this.btnThemFile.BackColor = Color.FromArgb(33, 150, 243);
-            this.btnThemFile.ForeColor = Color.White;
-            this.btnThemFile.FlatStyle = FlatStyle.Flat;
-            this.btnThemFile.FlatAppearance.BorderColor = Color.FromArgb(30, 136, 229);
-            this.btnThemFile.Size = new Size(160, 28);
-            this.btnThemFile.Location = new Point(548, 4);
+            this.btnThemFile.Location = new Point(560, 4);
+            this.btnThemFile.BackColor = DHN_WF.CustomUI.UIConstants.PrimaryColor;
+            this.btnThemFile.HoverColor = DHN_WF.CustomUI.UIConstants.PrimaryHover;
+            this.btnThemFile.PressedColor = DHN_WF.CustomUI.UIConstants.PrimaryPressed;
             this.btnThemFile.Cursor = Cursors.Hand;
             this.btnThemFile.Enabled = false;
             this.btnThemFile.Click += new EventHandler(this.BtnThemFile_Click);
@@ -100,7 +96,8 @@ namespace DHN_WF.Controls
 
             // panelFilter
             this.panelFilter.Dock = DockStyle.Top;
-            this.panelFilter.Height = 36;
+            this.panelFilter.Height = 50;
+            this.panelFilter.Padding = new Padding(0, 10, 0, 10);
             this.panelFilter.Controls.Add(this.lblTheoKy);
             this.panelFilter.Controls.Add(this.cboKy);
             this.panelFilter.Controls.Add(this.btnXem);
@@ -123,13 +120,12 @@ namespace DHN_WF.Controls
 
             // btnXem
             this.btnXem.Text = "Xem Dữ Liệu";
-            this.btnXem.Font = new Font("Segoe UI", 9);
-            this.btnXem.ForeColor = Color.FromArgb(33, 150, 243);
-            this.btnXem.BackColor = Color.White;
-            this.btnXem.FlatStyle = FlatStyle.Flat;
-            this.btnXem.FlatAppearance.BorderColor = Color.FromArgb(33, 150, 243);
-            this.btnXem.Size = new Size(110, 28);
             this.btnXem.Location = new Point(284, 4);
+            this.btnXem.Size = new Size(120, 32);
+            this.btnXem.BackColor = DHN_WF.CustomUI.UIConstants.SurfaceColor;
+            this.btnXem.ForeColor = DHN_WF.CustomUI.UIConstants.PrimaryColor;
+            this.btnXem.HoverColor = Color.FromArgb(240, 240, 240);
+            this.btnXem.PressedColor = Color.FromArgb(220, 220, 220);
             this.btnXem.Cursor = Cursors.Hand;
             this.btnXem.Click += new EventHandler(this.BtnXem_Click);
 
@@ -205,14 +201,14 @@ namespace DHN_WF.Controls
         private Panel panelTop;
         private Label lblDuongDan;
         private TextBox txtFilePath;
-        private Button btnChonFile;
-        private Button btnThemFile;
+        private DHN_WF.CustomUI.ModernButton btnChonFile;
+        private DHN_WF.CustomUI.ModernButton btnThemFile;
         private Label lblUploadMsg;
         private GroupBox grpThongTin;
         private Panel panelFilter;
         private Label lblTheoKy;
         private ComboBox cboKy;
-        private Button btnXem;
+        private DHN_WF.CustomUI.ModernButton btnXem;
         private Label lblThongKe;
         private DataGridView dgvData;
     }

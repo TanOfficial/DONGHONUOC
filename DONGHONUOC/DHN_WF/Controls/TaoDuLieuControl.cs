@@ -12,6 +12,7 @@ namespace DHN_WF.Controls
         public TaoDuLieuControl()
         {
             InitializeComponent();
+            DHN_WF.CustomUI.UIConstants.StyleModernGrid(this.dgvData);
             this.Load += async (s, e) => await LoadKyDocs();
         }
 

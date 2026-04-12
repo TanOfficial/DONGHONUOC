@@ -12,6 +12,7 @@ namespace DHN_WF.Controls
         public TaiKhoanControl()
         {
             InitializeComponent();
+            DHN_WF.CustomUI.UIConstants.StyleModernGrid(this.dgvUsers);
             this.Load += async (s, e) => await LoadUsers();
 
             // Modern text box focus effects
@@ -34,8 +35,8 @@ namespace DHN_WF.Controls
                 var users = await _api.GetUsersAsync();
                 dgvUsers.Rows.Clear();
                 foreach (var u in users)
-                    dgvUsers.Rows.Add(u.Username, u.HoTen,
-                        u.VaiTro == "QuanLy" ? "Quản Lý" : u.VaiTro == "NhanVien" ? "Nhân Viên" : u.VaiTro);
+                    dgvUsers.Rows.Add(u.Username ?? "", u.HoTen ?? "",
+                        (u.VaiTro == "QuanLy" ? "Quản Lý" : u.VaiTro == "NhanVien" ? "Nhân Viên" : u.VaiTro) ?? "");
             }
             catch (Exception ex)
             {

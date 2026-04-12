@@ -14,6 +14,7 @@ import CustomDialog from '../components/common/CustomDialog';
 import InputDialog from '../components/common/InputDialog';
 import OptionDialog, { DialogOption } from '../components/common/OptionDialog';
 import * as ImagePicker from 'expo-image-picker';
+import * as Print from 'expo-print';
 
 interface Customer {
     ma_danh_bo: string;
@@ -446,6 +447,104 @@ const GhiNuocScreen = () => {
         setDialogVisible(true);
     };
 
+    const handlePrint = async () => {
+        if (!currentKH || !csMoi) {
+            UIHelper.showCustomSnackBar('Vui lòng nhập chỉ số mới để in!', true);
+            return;
+        }
+
+        const tt = tieuThu;
+        const bd = calculateBill(tt, currentKH.gb, currentKH.dm?.toString(), currentKH.dmhn);
+
+        const html = `
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+            <style>
+              body { font-family: 'sans-serif'; padding: 10px; width: 58mm; margin: 0 auto; color: #000; }
+              .header { text-align: center; margin-bottom: 5px; }
+              .company { font-weight: bold; font-size: 16px; margin-bottom: 2px; }
+              .title { text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 10px; margin-top: 10px; border-bottom: 1.5px solid #000; padding-bottom: 5px; }
+              .row { display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
+              .label { flex: 1; }
+              .value { font-weight: bold; text-align: right; }
+              .divider { border-top: 1px dashed #000; margin: 10px 0; }
+              .total-box { margin-top: 10px; padding: 10px 0; border-top: 2px solid #000; text-align: center; }
+              .total-txt { font-size: 20px; font-weight: bold; }
+              .footer { text-align: center; font-size: 11px; margin-top: 20px; font-style: italic; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+                <div class="company">CÔNG TY CẤP NƯỚC</div>
+                <div style="font-size: 12px;">Số 123, Đường TP, Quận TB</div>
+            </div>
+            
+            <div class="title">GIẤY BÁO TẠM TÍNH</div>
+            
+            <div class="row">
+                <span class="label">Danh bộ:</span>
+                <span class="value">${currentKH.ma_danh_bo}</span>
+            </div>
+            <div class="row">
+                <span class="label">Khách hàng:</span>
+                <span class="value">${(currentKH.ten_kh || '').toUpperCase()}</span>
+            </div>
+            <div class="row">
+                <span class="label">Địa chỉ:</span>
+                <span class="value">${currentKH.dia_chi}</span>
+            </div>
+            <div class="row">
+                <span class="label">Kỳ đọc:</span>
+                <span class="value">${currentKH.ky}/${currentKH.nam}</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row">
+                <span class="label">Chỉ số cũ:</span>
+                <span class="value">${currentKH.chi_so_cu}</span>
+            </div>
+            <div class="row">
+                <span class="label">Chỉ số mới:</span>
+                <span class="value">${csMoi}</span>
+            </div>
+            <div class="row" style="font-size: 16px;">
+                <span class="label">Tiêu thụ:</span>
+                <span class="value">${tt} m3</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row">
+                <span class="label">Tiền nước:</span>
+                <span class="value">${bd.waterMoney} đ</span>
+            </div>
+            <div class="row">
+                <span class="label">Thuế & Phí:</span>
+                <span class="value">${(parseInt(bd.total.replace(/\./g, '')) - parseInt(bd.waterMoney.replace(/\./g, ''))).toLocaleString('vi-VN')} đ</span>
+            </div>
+
+            <div class="total-box">
+                <div class="total-txt">TỔNG CỘNG:</div>
+                <div class="total-txt">${bd.total} VNĐ</div>
+            </div>
+
+            <div class="footer">
+                Cảm ơn quý khách hàng!<br/>
+                (Lưu ý: Biên nhận này chỉ có giá trị tạm tính)
+            </div>
+          </body>
+        </html>
+        `;
+
+        try {
+            await Print.printAsync({ html });
+        } catch (error) {
+            Alert.alert('Lỗi In', 'Không thể kết nối với máy in hoặc trình in hệ thống.');
+        }
+    };
+
     const handleNoteSave = async (text: string) => {
         setGhiChu(text);
         setNoteDialogVisible(false);
@@ -816,15 +915,11 @@ const GhiNuocScreen = () => {
                     <Ionicons name="chevron-forward" size={22} color="#555" />
                     <Text style={styles.navBtnTxt}>Sau</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.navBtn} onPress={() => Alert.alert('PC', 'Mở chia sẻ dữ liệu CSV')}>
-                    <Ionicons name="share-social" size={22} color="teal" />
-                    <Text style={styles.navBtnTxt}>PC</Text>
-                </TouchableOpacity>
                 <TouchableOpacity style={styles.navBtn} onPress={() => setNoteDialogVisible(true)}>
                     <Ionicons name="create" size={22} color="#B8860B" />
                     <Text style={styles.navBtnTxt}>Ghi Chú</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.navBtn} onPress={() => Alert.alert('In', 'In biên nhận tạm tính')}>
+                <TouchableOpacity style={styles.navBtn} onPress={handlePrint}>
                     <Ionicons name="print" size={22} color="purple" />
                     <Text style={styles.navBtnTxt}>In</Text>
                 </TouchableOpacity>

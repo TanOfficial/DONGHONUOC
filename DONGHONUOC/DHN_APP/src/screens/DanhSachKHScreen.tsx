@@ -1,8 +1,8 @@
 console.log('📱 DANH SACH KH SCREEN LOADED');
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
+import { 
     StyleSheet, View, Text, FlatList, TextInput,
-    TouchableOpacity, ActivityIndicator, SafeAreaView, Modal, Alert, ScrollView
+    TouchableOpacity, ActivityIndicator, SafeAreaView, Modal, Alert, ScrollView, Platform, ActionSheetIOS
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -76,6 +76,8 @@ const DanhSachKHScreen = () => {
     // Download & CSV States
     const [downloadDialogVisible, setDownloadDialogVisible] = useState(false);
     const [kyDocList, setKyDocList] = useState<any[]>([]);
+    const [dotList, setDotList] = useState<string[]>([]);
+    const [mayList, setMayList] = useState<string[]>(['01', '02', '03', '04', '05', '17', '23', '26', '55']);
     const [selectedTo, setSelectedTo] = useState('Tân Phú 1');
     const [selectedMay, setSelectedMay] = useState('01');
     const [selectedDot, setSelectedDot] = useState('01');
@@ -91,34 +93,14 @@ const DanhSachKHScreen = () => {
 
             if (kyDocs && kyDocs.length > 0) {
                 setKyDocList(kyDocs);
-                // Parity with Flutter: Find the first Ky that actually has data
-                let activeKyId = null;
-                console.log('🔍 Searching for active Ky with data...');
-
-                for (const ky of kyDocs) {
-                    const kid = ky.MaKyDoc ?? ky.maKyDoc ?? ky.ID ?? ky.id;
-                    if (!kid) continue;
-
-                    console.log(`🧪 Testing Ky ID: ${kid}...`);
-                    // Use small page size for testing existence
-                    const check = await ApiService.layDanhSachDocSo(kid, 1, 1);
-                    if (check && check.length > 0) {
-                        console.log(`🎯 Found active Ky with data: ${kid}`);
-                        activeKyId = kid;
-                        break;
-                    }
-                }
-
-                if (!activeKyId) {
-                    const firstKy = kyDocs[0];
-                    activeKyId = firstKy.MaKyDoc ?? firstKy.maKyDoc ?? firstKy.ID ?? firstKy.id;
-                    console.log(`⚠️ No Ky has data, falling back to first Ky: ${activeKyId}`);
-                }
-
-                if (activeKyId) {
-                    setMaKyDoc(activeKyId);
-                    // Explicitly call fetchCustomers to ensure immediate load
-                    await fetchCustomers(activeKyId, 1, true);
+                
+                // Trình tự mới: Không tự động tìm kỳ có dữ liệu và tải về nữa.
+                // Chỉ thiết lập kỳ hiện tại dựa trên kỳ đầu tiên trong danh sách.
+                const firstKy = kyDocs[0];
+                const defaultKyId = firstKy.MaKyDoc ?? firstKy.maKyDoc ?? firstKy.ID ?? firstKy.id;
+                if (defaultKyId) {
+                    setMaKyDoc(defaultKyId);
+                    console.log(`📡 Default Ky set to: ${defaultKyId}. Waiting for manual download.`);
                 }
             } else {
                 console.warn('⚠️ No kyDocs returned from API');
@@ -135,6 +117,32 @@ const DanhSachKHScreen = () => {
     useEffect(() => {
         init();
     }, []);
+
+    useEffect(() => {
+        const fetchFilters = async () => {
+            if (maKyDoc && downloadDialogVisible) {
+                console.log(`🔄 Fetching dynamic filters for MaKyDoc: ${maKyDoc}`);
+                const filters = await ApiService.layFiltersTheoKy(maKyDoc);
+                
+                if (filters.dots && filters.dots.length > 0) {
+                    setDotList(filters.dots);
+                    if (!filters.dots.includes(selectedDot)) setSelectedDot(filters.dots[0]);
+                } else {
+                    setDotList([]);
+                    setSelectedDot('');
+                }
+
+                if (filters.mays && filters.mays.length > 0) {
+                    setMayList(filters.mays);
+                    if (!filters.mays.includes(selectedMay)) setSelectedMay(filters.mays[0]); // Auto select first valid machine
+                } else {
+                    setMayList([]);
+                    setSelectedMay('');
+                }
+            }
+        };
+        fetchFilters();
+    }, [maKyDoc, downloadDialogVisible]);
 
     const fetchCustomers = async (kyId: number, pageNum: number, reset = false) => {
         console.log('🔍 fetchCustomers trigger:', { kyId, pageNum, reset, currentMaKyDoc: maKyDoc });
@@ -187,7 +195,7 @@ const DanhSachKHScreen = () => {
                     if (search.trim()) {
                         data = await ApiService.timKiemToAnBo(search, pageNum, 50);
                     } else {
-                        data = await ApiService.layDanhSachDocSo(kyId, pageNum, 50, '', filterStatus === 0 ? undefined : filterStatus - 1);
+                        data = await ApiService.layDanhSachDocSo(kyId, pageNum, 50, '', filterStatus === 0 ? undefined : filterStatus - 1, selectedDot, selectedMay);
                     }
                 } catch (apiErr) {
                     console.warn('⚠️ API fetch failed:', apiErr);
@@ -404,9 +412,8 @@ const DanhSachKHScreen = () => {
             const filterInfo = `(Tổ: ${selectedTo}, Máy: ${selectedMay}, Đợt: ${selectedDot})`;
             UIHelper.showCustomSnackBar(`Đang tải dữ liệu kỳ ${maKyDoc} ${filterInfo}...`, false);
 
-            // Replicate Flutter: Combine Tổ/Máy/Đợt if needed or just use Dot (maLoTrinh)
-            // For now, use selectedDot as maLoTrinh
-            const allData = await ApiService.layToanBoDanhSachDocSo(maKyDoc, selectedDot);
+            // For now, use selectedDot as maLoTrinh and selectedMay
+            const allData = await ApiService.layToanBoDanhSachDocSo(maKyDoc, selectedDot, selectedMay);
 
             if (allData && allData.length > 0) {
                 await DatabaseHelper.luuDanhSachKhachHang(allData, maKyDoc);
@@ -450,6 +457,50 @@ const DanhSachKHScreen = () => {
         }
     };
 
+    // Helper for iOS selection
+    const showIOSActionSheet = (title: string, options: string[], onSelect: (val: string) => void) => {
+        ActionSheetIOS.showActionSheetWithOptions(
+            {
+                options: ['Hủy', ...options],
+                cancelButtonIndex: 0,
+                title: title,
+            },
+            (buttonIndex) => {
+                if (buttonIndex > 0) {
+                    onSelect(options[buttonIndex - 1]);
+                }
+            }
+        );
+    };
+
+    const renderPickerBox = (label: string, value: string, options: string[], onSelect: (val: string) => void, pickerElement: React.ReactNode) => {
+        if (Platform.OS === 'ios') {
+            return (
+                <View style={styles.dlRow}>
+                    <Text style={[styles.dlLabel, { width: 45, color: '#333', fontWeight: 'bold' }]}>{label}</Text>
+                    <TouchableOpacity 
+                        style={styles.dlPicker} 
+                        onPress={() => showIOSActionSheet(`Chọn ${label}`, options, onSelect)}
+                    >
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, flex: 1 }}>
+                            <Text style={{ fontSize: 15, color: '#333' }}>{value || '--'}</Text>
+                            <Ionicons name="chevron-down" size={18} color="#2196F3" />
+                        </View>
+                    </TouchableOpacity>
+                </View>
+            );
+        }
+
+        return (
+            <View style={styles.dlRow}>
+                <Text style={[styles.dlLabel, { width: 45, color: '#333', fontWeight: 'bold' }]}>{label}</Text>
+                <View style={styles.dlPicker}>
+                    {pickerElement}
+                </View>
+            </View>
+        );
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             {loading && (
@@ -490,57 +541,99 @@ const DanhSachKHScreen = () => {
                         <Text style={styles.modalTitle}>Tải Dữ Liệu Đọc Số</Text>
 
                         <View style={styles.dlForm}>
+                            {renderPickerBox(
+                                'Tổ', 
+                                selectedTo, 
+                                ['Tân Phú 1', 'Tân Phú 2', 'Tân Phú 3'],
+                                (v) => setSelectedTo(v),
+                                <Picker selectedValue={selectedTo} onValueChange={v => setSelectedTo(v)} style={styles.picker} dropdownIconColor="#2196F3">
+                                    {['Tân Phú 1', 'Tân Phú 2', 'Tân Phú 3'].map(to => <Picker.Item key={to} label={to} value={to} style={{ fontSize: 14 }} />)}
+                                </Picker>
+                            )}
+
                             <View style={styles.dlRow}>
-                                <Text style={[styles.dlLabel, { width: 50 }]}>Tổ</Text>
-                                <View style={styles.dlPicker}>
-                                    <Picker selectedValue={selectedTo} onValueChange={v => setSelectedTo(v)} style={styles.picker} dropdownIconColor="#2196F3">
-                                        {['Tân Phú 1', 'Tân Phú 2', 'Tân Phú 3'].map(to => <Picker.Item key={to} label={to} value={to} style={{ fontSize: 14 }} />)}
-                                    </Picker>
+                                <Text style={[styles.dlLabel, { width: 45, color: '#333', fontWeight: 'bold' }]}>Máy</Text>
+                                <View style={[styles.dlPicker, { flexDirection: 'row', alignItems: 'center' }]}>
+                                    <TextInput 
+                                        style={[styles.picker, { flex: 1, height: 40, paddingLeft: 12, color: '#000' }]} 
+                                        value={selectedMay}
+                                        onChangeText={v => setSelectedMay(v)}
+                                        keyboardType="numeric"
+                                        placeholder="Nhập máy..."
+                                    />
+                                    <View style={{ width: 40, height: 40, justifyContent: 'center', overflow: 'hidden' }}>
+                                        <Picker 
+                                            selectedValue={null} 
+                                            onValueChange={v => { if (v) setSelectedMay(v); }}
+                                            style={{ opacity: 0, position: 'absolute', width: 100, height: 100 }}
+                                        >
+                                            <Picker.Item label="Chọn nhanh..." value={null} />
+                                            {mayList.map(m => (
+                                                <Picker.Item key={m} label={m} value={m} />
+                                            ))}
+                                        </Picker>
+                                        <Ionicons name="chevron-down" size={20} color="#2196F3" style={{ alignSelf: 'center' }} pointerEvents="none" />
+                                    </View>
                                 </View>
                             </View>
 
-                            <View style={styles.dlRow}>
-                                <Text style={[styles.dlLabel, { width: 50 }]}>Máy</Text>
-                                <View style={styles.dlPicker}>
-                                    <Picker selectedValue={selectedMay} onValueChange={v => setSelectedMay(v)} style={styles.picker} dropdownIconColor="#2196F3">
-                                        {['01', '02', '03', '04'].map(m => <Picker.Item key={m} label={m} value={m} style={{ fontSize: 14 }} />)}
-                                    </Picker>
-                                </View>
-                            </View>
+                            {renderPickerBox(
+                                'Năm', 
+                                selectedNam, 
+                                [...new Set(kyDocList.map(k => (k.Nam ?? k.nam ?? 2024).toString()))].sort((a, b) => b.localeCompare(a)),
+                                (v) => {
+                                    setSelectedNam(v);
+                                    const firstKy = kyDocList.find(k => (k.Nam?.toString() === v || k.nam?.toString() === v));
+                                    if (firstKy) {
+                                        const id = firstKy.MaKyDoc ?? firstKy.maKyDoc ?? firstKy.ID ?? firstKy.id;
+                                        setMaKyDoc(id);
+                                    }
+                                },
+                                <Picker selectedValue={selectedNam} onValueChange={v => {
+                                    setSelectedNam(v);
+                                    const firstKy = kyDocList.find(k => (k.Nam?.toString() === v || k.nam?.toString() === v));
+                                    if (firstKy) {
+                                        const id = firstKy.MaKyDoc ?? firstKy.maKyDoc ?? firstKy.ID ?? firstKy.id;
+                                        setMaKyDoc(id);
+                                    }
+                                }} style={styles.picker} dropdownIconColor="#2196F3">
+                                    {[...new Set(kyDocList.map(k => (k.Nam ?? k.nam ?? 2024).toString()))]
+                                        .sort((a, b) => b.localeCompare(a))
+                                        .map(y => <Picker.Item key={y} label={y} value={y} style={{ fontSize: 14 }} />)}
+                                </Picker>
+                            )}
 
-                            {/* Năm and Kỳ stacked vertically to prevent overlap */}
-                            <View style={styles.dlRow}>
-                                <Text style={[styles.dlLabel, { width: 50 }]}>Năm</Text>
-                                <View style={styles.dlPicker}>
-                                    <Picker selectedValue={selectedNam} onValueChange={v => setSelectedNam(v)} style={styles.picker} dropdownIconColor="#2196F3">
-                                        {['2024', '2025', '2026'].map(y => <Picker.Item key={y} label={y} value={y} style={{ fontSize: 14 }} />)}
-                                    </Picker>
-                                </View>
-                            </View>
+                            {renderPickerBox(
+                                'Kỳ', 
+                                kyDocList.find(k => (k.MaKyDoc === maKyDoc || k.maKyDoc === maKyDoc || k.ID === maKyDoc || k.id === maKyDoc))?.Ky?.toString() || '--', 
+                                kyDocList.filter(k => (k.Nam?.toString() === selectedNam || k.nam?.toString() === selectedNam)).map(k => (k.Ky ?? k.ky ?? '1').toString()),
+                                (v) => {
+                                    const selected = kyDocList.find(k => (k.Nam?.toString() === selectedNam || k.nam?.toString() === selectedNam) && (k.Ky?.toString() === v || k.ky?.toString() === v));
+                                    if (selected) setMaKyDoc(selected.MaKyDoc ?? selected.maKyDoc ?? selected.ID ?? selected.id);
+                                },
+                                <Picker selectedValue={maKyDoc?.toString()} onValueChange={v => setMaKyDoc(parseInt(v))} style={styles.picker} dropdownIconColor="#2196F3">
+                                    {kyDocList
+                                        .filter(k => (k.Nam?.toString() === selectedNam || k.nam?.toString() === selectedNam))
+                                        .map(k => {
+                                            const id = k.MaKyDoc ?? k.maKyDoc ?? k.ID ?? k.id;
+                                            const kyValue = k.Ky ?? k.ky ?? '1';
+                                            return <Picker.Item key={id} label={kyValue.toString()} value={id.toString()} style={{ fontSize: 14 }} />;
+                                        })}
+                                </Picker>
+                            )}
 
-                            <View style={styles.dlRow}>
-                                <Text style={[styles.dlLabel, { width: 50 }]}>Kỳ</Text>
-                                <View style={styles.dlPicker}>
-                                    <Picker selectedValue={maKyDoc?.toString()} onValueChange={v => setMaKyDoc(parseInt(v))} style={styles.picker} dropdownIconColor="#2196F3">
-                                        {kyDocList
-                                            .filter(k => (k.Nam?.toString() === selectedNam || k.nam?.toString() === selectedNam))
-                                            .map(k => {
-                                                const id = k.MaKyDoc ?? k.maKyDoc ?? k.ID ?? k.id;
-                                                const kyValue = k.Ky ?? k.ky ?? '1';
-                                                return <Picker.Item key={id} label={kyValue.toString()} value={id.toString()} style={{ fontSize: 14 }} />;
-                                            })}
-                                    </Picker>
-                                </View>
-                            </View>
-
-                            <View style={styles.dlRow}>
-                                <Text style={[styles.dlLabel, { width: 50 }]}>Đợt</Text>
-                                <View style={[styles.dlPicker, { width: '45%' }]}>
-                                    <Picker selectedValue={selectedDot} onValueChange={v => setSelectedDot(v)} style={styles.picker} dropdownIconColor="#2196F3">
-                                        {['01', '02', '03'].map(d => <Picker.Item key={d} label={d} value={d} style={{ fontSize: 14 }} />)}
-                                    </Picker>
-                                </View>
-                            </View>
+                            {renderPickerBox(
+                                'Đợt', 
+                                selectedDot.padStart(2, '0'), 
+                                dotList.map(d => d.padStart(2, '0')),
+                                (v) => setSelectedDot(v.replace(/^0+/, '') || '0'),
+                                <Picker selectedValue={selectedDot} onValueChange={v => setSelectedDot(v)} style={styles.picker} dropdownIconColor="#2196F3">
+                                    {dotList.length > 0 
+                                        ? dotList.map(d => <Picker.Item key={d} label={d.padStart(2, '0')} value={d} style={{ fontSize: 14 }} />)
+                                        : <Picker.Item label="--" value="" />
+                                    }
+                                </Picker>
+                            )}
                         </View>
 
                         <View style={styles.dlActions}>

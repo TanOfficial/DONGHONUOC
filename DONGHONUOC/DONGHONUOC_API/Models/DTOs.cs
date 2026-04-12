@@ -105,6 +105,8 @@ namespace DONGHONUOC_API.Models
         public string? DiaChi { get; set; }
         public string? DiaChiDHN { get; set; }
         public string? MaLoTrinh { get; set; }
+        public string? Dot { get; set; }
+        public string? May { get; set; }
         public int? Nam { get; set; }
         public string? Ky { get; set; }
         public string? Hieu { get; set; }
@@ -168,6 +170,7 @@ namespace DONGHONUOC_API.Models
     public class BienDongRow
     {
         public string MaDanhBo { get; set; } = "";
+        public string? TenKhachHang { get; set; }
         public string? DiaChi { get; set; }
         public int CSCu { get; set; }
         public string MaCode { get; set; } = "40";
@@ -179,5 +182,11 @@ namespace DONGHONUOC_API.Models
         public string? GB { get; set; }
         public string? DM { get; set; }
         public string? SDT { get; set; }
+    }
+
+    public class UploadBienDongRequest
+    {
+        public Microsoft.AspNetCore.Http.IFormFile? File { get; set; }
+        public int MaKyDoc { get; set; }
     }
 }

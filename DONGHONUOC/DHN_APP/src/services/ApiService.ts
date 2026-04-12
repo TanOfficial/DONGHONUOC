@@ -11,7 +11,8 @@ const TIMEOUT_MS = 10000; // 10 seconds
 
 class ApiService {
     private static instance: ApiService;
-    private baseUrl: string = `http://${DEFAULT_IP}:${PORT}/api`;
+    // Cập nhật đường dẫn Cloudflare Tunnel để truy cập từ xa
+    private baseUrl: string = `https://thermal-excluding-gmbh-use.trycloudflare.com/api`;
     private currentUsername: string | null = null;
 
     private constructor() {
@@ -26,6 +27,8 @@ class ApiService {
     }
 
     private async loadBaseUrl() {
+        // Tạm thời bỏ qua việc load từ bộ nhớ để ép App dùng Cloudflare Tunnel
+        /*
         const savedUrlOrIp = await AsyncStorage.getItem('server_ip');
         if (savedUrlOrIp) {
             if (savedUrlOrIp.startsWith('http')) {
@@ -34,6 +37,8 @@ class ApiService {
                 this.baseUrl = `http://${savedUrlOrIp}:${PORT}/api`;
             }
         }
+        */
+        console.log('🌐 API BaseURL:', this.baseUrl);
     }
 
     public async setBaseUrl(value: string) {
@@ -121,7 +126,22 @@ class ApiService {
 
     // ====== ĐỌC CHỈ SỐ ======
 
-    public async layDanhSachDocSo(maKyDoc: number, pageNumber = 1, pageSize = 50, search = '', trangThai?: number) {
+    public async layFiltersTheoKy(maKyDoc: number) {
+        if (!maKyDoc || maKyDoc <= 0) return { dots: [], mays: [] };
+        try {
+            const url = `${this.baseUrl}/docchiso/filters/${maKyDoc}`;
+            const response = await axios.get(url);
+            if (response.status === 200) {
+                return response.data;
+            }
+            return { dots: [], mays: [] };
+        } catch (e) {
+            console.warn('⚠️ Lỗi tải filters:', e);
+            return { dots: [], mays: [] };
+        }
+    }
+
+    public async layDanhSachDocSo(maKyDoc: number, pageNumber = 1, pageSize = 50, search = '', trangThai?: number, dot = '', may = '') {
         if (!maKyDoc || maKyDoc <= 0) {
             console.warn('⚠️ layDanhSachDocSo: maKyDoc is invalid:', maKyDoc);
             return [];
@@ -130,6 +150,8 @@ class ApiService {
             let url = `${this.baseUrl}/docchiso/ky/${maKyDoc}?pageNumber=${pageNumber}&pageSize=${pageSize}`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (trangThai !== undefined) url += `&trangThai=${trangThai}`;
+            if (dot) url += `&maLoTrinh=${encodeURIComponent(dot)}`;
+            if (may) url += `&may=${encodeURIComponent(may)}`;
 
             console.log('🌐 Calling API:', url);
             const response = await axios.get(url);
@@ -147,7 +169,7 @@ class ApiService {
         }
     }
 
-    public async layToanBoDanhSachDocSo(maKyDoc: number, maLoTrinh?: string) {
+    public async layToanBoDanhSachDocSo(maKyDoc: number, maLoTrinh?: string, may?: string) {
         if (!maKyDoc || maKyDoc <= 0) {
             console.warn('⚠️ layToanBoDanhSachDocSo: maKyDoc is invalid:', maKyDoc);
             return [];
@@ -155,6 +177,7 @@ class ApiService {
         try {
             let url = `${this.baseUrl}/docchiso/ky/${maKyDoc}?pageSize=0`;
             if (maLoTrinh) url += `&maLoTrinh=${encodeURIComponent(maLoTrinh)}`;
+            if (may) url += `&may=${encodeURIComponent(may)}`;
 
             console.log('🌐 Calling Full Download API:', url);
             const response = await axios.get(url);
@@ -319,6 +342,21 @@ class ApiService {
         }
     }
 
+    public async layDanhSachDot(maKyDoc: number) {
+        if (!maKyDoc || maKyDoc <= 0) return [];
+        try {
+            const response = await axios.get(`${this.baseUrl}/docchiso/thongke-dot/${maKyDoc}`);
+            if (response.status === 200 && Array.isArray(response.data)) {
+                // Thống kê-đợt trả về List<ThongKeDotResponse> { maDot: string, ... }
+                return response.data.map((d: any) => d.MaDot || d.maDot).filter(d => !!d);
+            }
+            return [];
+        } catch (e) {
+            console.error('❌ Lỗi lấy danh sách đợt:', e);
+            return [];
+        }
+    }
+
     public async thongKe(maKyDoc: number) {
         try {
             const response = await axios.get(`${this.baseUrl}/docchiso/thongke/${maKyDoc}`);
@@ -368,6 +406,8 @@ class ApiService {
             dia_chi: item.DiaChi || item.diaChi,
             dia_chi_dhn: item.DiaChiDHN || item.diaChiDHN,
             ma_lo_trinh: item.MaLoTrinh || item.maLoTrinh,
+            dot: item.Dot || item.dot,
+            may: item.May || item.may,
             nam: item.Nam || item.nam,
             ky: item.Ky || item.ky,
             hieu: item.Hieu || item.hieu,

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DONGHONUOC_API.Data;
 using DONGHONUOC_API.Models;
+using DONGHONUOC_API.Services;
 using OfficeOpenXml;
 
 namespace DONGHONUOC_API.Controllers
@@ -18,9 +19,9 @@ namespace DONGHONUOC_API.Controllers
         }
 
         [HttpGet("ky/{maKyDoc}")]
-        public async Task<ActionResult<List<DocSoItemResponse>>> GetByKy([FromRoute] int maKyDoc, [FromQuery] string? maLoTrinh = null, [FromQuery] int? trangThai = null, [FromQuery] string? search = null, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 0)
+        public async Task<ActionResult<List<DocSoItemResponse>>> GetByKy([FromRoute] int maKyDoc, [FromQuery] string? maLoTrinh = null, [FromQuery] string? may = null, [FromQuery] int? trangThai = null, [FromQuery] string? search = null, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 0)
         {
-            Console.WriteLine($"🔍 GetByKy called: maKyDoc={maKyDoc}, page={pageNumber}, size={pageSize}");
+            Console.WriteLine($"🔍 GetByKy called: maKyDoc={maKyDoc}, dot={maLoTrinh}, may={may}, page={pageNumber}, size={pageSize}");
             var lichDoc = await _db.KyDoc.FindAsync(maKyDoc);
             if (lichDoc == null) return NotFound("Không tìm thấy kỳ đọc");
 
@@ -28,7 +29,10 @@ namespace DONGHONUOC_API.Controllers
             var query = _db.DocChiSo.AsNoTracking().Where(d => d.Nam == lichDoc.Nam && d.Ky == kyStr);
 
             if (!string.IsNullOrEmpty(maLoTrinh))
-                query = query.Where(d => d.MaLoTrinh == maLoTrinh);
+                query = query.Where(d => d.Dot == maLoTrinh);
+
+            if (!string.IsNullOrEmpty(may))
+                query = query.Where(d => d.May == may);
 
             if (trangThai.HasValue)
             {
@@ -48,7 +52,7 @@ namespace DONGHONUOC_API.Controllers
                                          (d.Duong != null && d.Duong.ToLower().Contains(search)));
             }
 
-            var pagedQuery = query.OrderBy(d => d.MaLoTrinh).ThenBy(d => d.MaDanhBo).AsQueryable();
+            var pagedQuery = query.OrderBy(d => d.Dot).ThenBy(d => d.MaDanhBo).AsQueryable();
             if (pageSize > 0)
             {
                 pagedQuery = pagedQuery.Skip((pageNumber - 1) * pageSize).Take(pageSize);
@@ -62,6 +66,8 @@ namespace DONGHONUOC_API.Controllers
                 HoTen = d.TenKhachHang ?? "",
                 DiaChi = d.DiaChi,
                 MaLoTrinh = d.MaLoTrinh,
+                Dot = d.Dot,
+                May = d.May,
                 Nam = d.Nam,
                 Ky = d.Ky,
                 Hieu = d.Hieu,
@@ -134,6 +140,8 @@ namespace DONGHONUOC_API.Controllers
                 HoTen = d.TenKhachHang ?? "",
                 DiaChi = d.DiaChi,
                 MaLoTrinh = d.MaLoTrinh,
+                Dot = d.Dot,
+                May = d.May,
                 Nam = d.Nam,
                 Ky = d.Ky,
                 Hieu = d.Hieu,
@@ -215,10 +223,20 @@ namespace DONGHONUOC_API.Controllers
                 NguoiThucHien = request.NguoiDoc,
                 ThoiGian = DateTime.Now
             };
+            
+            // Tự động tính tiền nước tạm tính ngay khi đọc xong
+            var (tienNuoc, thue, bvmt, tongCong) = WaterBillingService.TinhTienNuoc(
+                docCS.TieuThu ?? 0, docCS.GB ?? "11", docCS.DM ?? "16", (docCS.DMHN ?? 0).ToString());
+            
+            docCS.TienNuoc = (long)tienNuoc;
+            docCS.Thue = (int)thue;
+            docCS.BVMT = (int)bvmt;
+            docCS.TongTien = (long)tongCong;
+
             _db.LichSuDocSo.Add(lichSu);
 
             await _db.SaveChangesAsync();
-            return Ok(new { message = "Đã lưu chỉ số thành công!", tieuThu = lichSu.TieuThu });
+            return Ok(new { message = "Đã lưu chỉ số thành công!", tieuThu = lichSu.TieuThu, tongTien = tongCong });
         }
 
         [HttpPut("code")]
@@ -291,6 +309,47 @@ namespace DONGHONUOC_API.Controllers
 
             await _db.SaveChangesAsync();
             return Ok(new { message = "Đã hủy đọc số", data = docCS });
+        }
+
+        [HttpPost("chot-hoa-don/{maKyDoc}")]
+        public async Task<ActionResult> ChotHoaDonThang(int maKyDoc)
+        {
+            var lichDoc = await _db.KyDoc.FindAsync(maKyDoc);
+            if (lichDoc == null) return NotFound("Kỳ đọc không tồn tại");
+            
+            string kyStr = lichDoc.Ky.ToString("D2");
+            var ds = await _db.DocChiSo
+                .Where(d => d.Nam == lichDoc.Nam && d.Ky == kyStr && d.TrangThai >= 1)
+                .ToListAsync();
+
+            if (!ds.Any()) return BadRequest("Chưa có danh bộ nào được đọc điện/nước trong kỳ này để chốt!");
+
+            int count = 0;
+            double totalTongTien = 0;
+
+            foreach (var docCS in ds)
+            {
+                var (tienNuoc, thue, bvmt, tongCong) = WaterBillingService.TinhTienNuoc(
+                    docCS.TieuThu ?? 0, 
+                    docCS.GB ?? "11", 
+                    docCS.DM ?? "16", 
+                    (docCS.DMHN ?? 0).ToString());
+
+                docCS.TienNuoc = (long)tienNuoc;
+                docCS.Thue = (int)thue;
+                docCS.BVMT = (int)bvmt;
+                docCS.TongTien = (long)tongCong;
+                
+                totalTongTien += tongCong;
+                count++;
+            }
+
+            await _db.SaveChangesAsync();
+            return Ok(new { 
+                message = $"Đã chốt hóa đơn thành công cho {count} danh bộ.",
+                count,
+                tongTienQuyetToan = totalTongTien 
+            });
         }
 
         [HttpGet("lichsu/{maDanhBo}")]
@@ -409,6 +468,31 @@ namespace DONGHONUOC_API.Controllers
             };
         }
 
+        // ====== BỘ LỌC ĐỘNG TỪ DB ======
+        [HttpGet("filters/{maKyDoc}")]
+        public async Task<ActionResult<object>> GetFilters(int maKyDoc)
+        {
+            var lichDoc = await _db.KyDoc.FindAsync(maKyDoc);
+            if (lichDoc == null) return NotFound("Kỳ đọc không tồn tại");
+            string kyStr = lichDoc.Ky.ToString("D2");
+
+            var dots = await _db.DocChiSo
+                .Where(d => d.Nam == lichDoc.Nam && d.Ky == kyStr && !string.IsNullOrEmpty(d.Dot))
+                .Select(d => d.Dot!)
+                .Distinct()
+                .OrderBy(d => d)
+                .ToListAsync();
+
+            var mays = await _db.DocChiSo
+                .Where(d => d.Nam == lichDoc.Nam && d.Ky == kyStr && !string.IsNullOrEmpty(d.May))
+                .Select(d => d.May!)
+                .Distinct()
+                .OrderBy(m => m)
+                .ToListAsync();
+
+            return Ok(new { dots, mays });
+        }
+
         // ====== THỐNG KÊ THEO ĐỢT ======
         [HttpGet("thongke-dot/{maKyDoc}")]
         public async Task<ActionResult<List<ThongKeDotResponse>>> ThongKeDot(int maKyDoc)
@@ -422,7 +506,7 @@ namespace DONGHONUOC_API.Controllers
                 .ToListAsync();
 
             var grouped = list
-                .GroupBy(d => d.MaLoTrinh ?? "??")
+                .GroupBy(d => d.Dot ?? "??")
                 .OrderBy(g => g.Key)
                 .Select(g =>
                 {
@@ -486,8 +570,11 @@ namespace DONGHONUOC_API.Controllers
 
         // ====== UPLOAD FILE BIẾN ĐỘNG ======
         [HttpPost("upload-bien-dong")]
-        public async Task<ActionResult> UploadBienDong([FromForm] IFormFile file, [FromForm] int maKyDoc)
+        public async Task<ActionResult> UploadBienDong([FromForm] UploadBienDongRequest request)
         {
+            var file = request.File;
+            var maKyDoc = request.MaKyDoc;
+
             if (file == null || file.Length == 0)
                 return BadRequest("Vui lòng chọn file hợp lệ (.xlsx hoặc .csv)");
 
@@ -565,10 +652,17 @@ namespace DONGHONUOC_API.Controllers
                 }
 
                 int iDanhBa = IdxOf("DanhBa", "DANHBA", "MaDanhBo");
-                int iDiaChi = IdxOf("SoNhaMoi", "DiaChi");
-                int iCSCu = IdxOf("CSCu", "ChiSoCu");
+                int iDiaChi = IdxOf("SoNhaMoi", "DiaChi", "Địa Chỉ", "DiaChiMoi");
+                int iCSCu = IdxOf("CSCu", "ChiSoCu", "CS Cu");
                 int iCode = IdxOf("CodeMoi", "MaCode", "Code");
                 int iDot = IdxOf("Dot", "MaDot", "MaLoTrinh");
+                int iHieu = IdxOf("Hieu", "HieuMoi");
+                int iCo = IdxOf("Co", "CoMoi");
+                int iSoThan = IdxOf("SoThan", "SoThanMoi");
+                int iViTri = IdxOf("ViTri", "ViTriMoi");
+                int iGB = IdxOf("GB");
+                int iDM = IdxOf("DM");
+                int iSDT = IdxOf("SDT", "SoDienThoai");
 
                 string? line;
                 while ((line = await reader.ReadLineAsync()) != null)
@@ -581,10 +675,18 @@ namespace DONGHONUOC_API.Controllers
                     rows.Add(new BienDongRow
                     {
                         MaDanhBo = danhBa,
+                        TenKhachHang = cols.Length > 1 ? cols[1].Trim() : "", // Giả định cột 2 là Tên KH
                         DiaChi = iDiaChi >= 0 ? cols.ElementAtOrDefault(iDiaChi)?.Trim() : null,
                         CSCu = iCSCu >= 0 && int.TryParse(cols.ElementAtOrDefault(iCSCu)?.Trim(), out int csCu2) ? csCu2 : 0,
                         MaCode = iCode >= 0 ? cols.ElementAtOrDefault(iCode)?.Trim() ?? "40" : "40",
                         MaDot = iDot >= 0 ? cols.ElementAtOrDefault(iDot)?.Trim() : null,
+                        Hieu = iHieu >= 0 ? cols.ElementAtOrDefault(iHieu)?.Trim() : null,
+                        Co = iCo >= 0 ? cols.ElementAtOrDefault(iCo)?.Trim() : null,
+                        SoThan = iSoThan >= 0 ? cols.ElementAtOrDefault(iSoThan)?.Trim() : null,
+                        ViTri = iViTri >= 0 ? cols.ElementAtOrDefault(iViTri)?.Trim() : null,
+                        GB = iGB >= 0 ? cols.ElementAtOrDefault(iGB)?.Trim() : null,
+                        DM = iDM >= 0 ? cols.ElementAtOrDefault(iDM)?.Trim() : null,
+                        SDT = iSDT >= 0 ? cols.ElementAtOrDefault(iSDT)?.Trim() : null,
                     });
                 }
             }
@@ -618,7 +720,7 @@ namespace DONGHONUOC_API.Controllers
                         TrangThai = 0,
                         MaCode = row.MaCode,
                         SoNhaMoi = row.DiaChi,
-                        MaLoTrinh = row.MaDot,
+                        Dot = row.MaDot,
                         Hieu = row.Hieu,
                         Co = row.Co,
                         SoThan = row.SoThan,
@@ -634,19 +736,28 @@ namespace DONGHONUOC_API.Controllers
                 {
                     existing.ChiSoCu = row.CSCu;
                     if (!string.IsNullOrEmpty(row.DiaChi)) existing.SoNhaMoi = row.DiaChi;
-                    if (!string.IsNullOrEmpty(row.MaDot)) existing.MaLoTrinh = row.MaDot;
+                    if (!string.IsNullOrEmpty(row.MaDot)) existing.Dot = row.MaDot;
                     capNhat++;
                 }
             }
 
-            await _db.SaveChangesAsync();
-            return Ok(new
+            try 
             {
-                message = $"Import thành công! Thêm mới: {themMoi}, Cập nhật: {capNhat}",
-                themMoi,
-                capNhat,
-                tongCong = rows.Count
-            });
+                await _db.SaveChangesAsync();
+                return Ok(new
+                {
+                    message = $"Import thành công! Thêm mới: {themMoi}, Cập nhật: {capNhat}",
+                    themMoi,
+                    capNhat,
+                    tongCong = rows.Count
+                });
+            }
+            catch (Exception ex)
+            {
+                var inner = ex.InnerException?.Message ?? ex.Message;
+                Console.WriteLine($"❌ Save Changes Error: {inner}");
+                return StatusCode(500, $"Lỗi Database: {inner}");
+            }
         }
     }
 }

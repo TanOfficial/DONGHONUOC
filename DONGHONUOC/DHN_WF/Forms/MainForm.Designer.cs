@@ -17,14 +17,16 @@ namespace DHN_WF.Forms
             this.tabControl = new TabControl();
             this.tabTaoDuLieu = new TabPage();
             this.tabLichDocSo = new TabPage();
+            this.tabXuLyDuLieu = new TabPage();
             this.tabTaiKhoan = new TabPage();
             this.lblUserName = new Label();
             this.lblVaiTro = new Label();
-            this.btnDangXuat = new Button();
+            this.btnDangXuat = new DHN_WF.CustomUI.ModernButton();
             this.panelUserInfo = new Panel();
             this.taoDuLieuControl = new TaoDuLieuControl();
             this.lichDocSoControl = new LichDocSoControl();
             this.taiKhoanControl = new TaiKhoanControl();
+            this.xuLyDuLieuControl = new XuLyDuLieuControl();
 
             this.panelHeader.SuspendLayout();
             this.tabControl.SuspendLayout();
@@ -36,7 +38,7 @@ namespace DHN_WF.Forms
 
             // panelHeader
             this.panelHeader.Dock = DockStyle.Top;
-            this.panelHeader.Height = 44;
+            this.panelHeader.Height = 50;
             this.panelHeader.BackColor = Color.White;
             this.panelHeader.BorderStyle = BorderStyle.None;
             this.panelHeader.Padding = new Padding(4, 6, 4, 0);
@@ -52,6 +54,7 @@ namespace DHN_WF.Forms
             this.tabControl.Font = new Font("Segoe UI", 9, FontStyle.Regular);
             this.tabControl.TabPages.Add(this.tabTaoDuLieu);
             this.tabControl.TabPages.Add(this.tabLichDocSo);
+            this.tabControl.TabPages.Add(this.tabXuLyDuLieu);
             this.tabControl.TabPages.Add(this.tabTaiKhoan);
             this.tabControl.DrawItem += new DrawItemEventHandler(this.TabControl_DrawItem);
 
@@ -62,6 +65,10 @@ namespace DHN_WF.Forms
             // tabLichDocSo
             this.tabLichDocSo.Text = "Lịch Đọc Số";
             this.tabLichDocSo.BackColor = Color.White;
+
+            // tabXuLyDuLieu
+            this.tabXuLyDuLieu.Text = "Xử Lý Dữ Liệu";
+            this.tabXuLyDuLieu.BackColor = Color.White;
 
             // tabTaiKhoan
             this.tabTaiKhoan.Text = "Tài Khoản";
@@ -95,13 +102,12 @@ namespace DHN_WF.Forms
 
             // btnDangXuat
             this.btnDangXuat.Text = "Đăng xuất";
-            this.btnDangXuat.Font = new Font("Segoe UI", 9);
-            this.btnDangXuat.BackColor = Color.FromArgb(239, 68, 68);
+            this.btnDangXuat.BackColor = DHN_WF.CustomUI.UIConstants.DangerColor;
             this.btnDangXuat.ForeColor = Color.White;
-            this.btnDangXuat.FlatStyle = FlatStyle.Flat;
-            this.btnDangXuat.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
-            this.btnDangXuat.Size = new Size(88, 28);
-            this.btnDangXuat.Location = new Point(128, 6);
+            this.btnDangXuat.HoverColor = DHN_WF.CustomUI.UIConstants.DangerHover;
+            this.btnDangXuat.PressedColor = DHN_WF.CustomUI.UIConstants.DangerPressed;
+            this.btnDangXuat.Size = new Size(88, 32);
+            this.btnDangXuat.Location = new Point(128, 8);
             this.btnDangXuat.Cursor = Cursors.Hand;
             this.btnDangXuat.Click += (s, e) => { this.Close(); };
 
@@ -116,10 +122,12 @@ namespace DHN_WF.Forms
             this.taoDuLieuControl.Dock = DockStyle.Fill;
             this.lichDocSoControl.Dock = DockStyle.Fill;
             this.taiKhoanControl.Dock = DockStyle.Fill;
+            this.xuLyDuLieuControl.Dock = DockStyle.Fill;
 
             panelContent.Controls.Add(this.taoDuLieuControl);
             panelContent.Controls.Add(this.lichDocSoControl);
             panelContent.Controls.Add(this.taiKhoanControl);
+            panelContent.Controls.Add(this.xuLyDuLieuControl);
 
             // Wire tab switching
             this.tabControl.SelectedIndexChanged += (s, e) =>
@@ -128,11 +136,13 @@ namespace DHN_WF.Forms
                 taoDuLieuControl.Visible = sel == tabTaoDuLieu;
                 lichDocSoControl.Visible = sel == tabLichDocSo;
                 taiKhoanControl.Visible = sel == tabTaiKhoan;
+                xuLyDuLieuControl.Visible = sel == tabXuLyDuLieu;
             };
             // Default
             taoDuLieuControl.Visible = true;
             lichDocSoControl.Visible = false;
             taiKhoanControl.Visible = false;
+            xuLyDuLieuControl.Visible = false;
 
             // MainForm
             this.Text = "Quản Lý Đọc Số – DHN_WF";
@@ -190,11 +200,13 @@ namespace DHN_WF.Forms
         private TabPage tabTaoDuLieu;
         private TabPage tabLichDocSo;
         private TabPage tabTaiKhoan;
+        private TabPage tabXuLyDuLieu;
         private Label lblUserName;
         private Label lblVaiTro;
-        private Button btnDangXuat;
+        private DHN_WF.CustomUI.ModernButton btnDangXuat;
         private TaoDuLieuControl taoDuLieuControl;
         private LichDocSoControl lichDocSoControl;
         private TaiKhoanControl taiKhoanControl;
+        private XuLyDuLieuControl xuLyDuLieuControl;
     }
 }

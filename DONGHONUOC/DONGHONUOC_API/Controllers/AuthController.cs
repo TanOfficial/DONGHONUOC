@@ -25,50 +25,68 @@ namespace DONGHONUOC_API.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
         {
-            var user = await _db.NguoiDung
-                .FirstOrDefaultAsync(u => u.Username == request.Username && u.Khoa != true);
+            Console.WriteLine($"[Login] Attempt for user: {request.Username}");
+            try
+            {
+                var user = await _db.NguoiDung
+                    .FirstOrDefaultAsync(u => u.Username == request.Username && u.Khoa != true);
 
-            if (user == null)
-            {
-                return Ok(new LoginResponse { Success = false, Message = "Sai tài khoản hoặc mật khẩu!" });
-            }
-
-            bool isValid = false;
-            // Check if it is a BCrypt hash (usually starts with $2a$, $2b$, or $2y$)
-            if (user.PasswordHash != null && user.PasswordHash.StartsWith("$2") && user.PasswordHash.Length > 50)
-            {
-                isValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
-            }
-            else
-            {
-                // Legacy SHA256 verification
-                if (user.PasswordHash == HashPasswordLegacy(request.Password))
+                if (user == null)
                 {
-                    isValid = true;
-                    // Auto-upgrade password hash to BCrypt seamlessly
-                    user.PasswordHash = HashPassword(request.Password);
-                    await _db.SaveChangesAsync();
+                    Console.WriteLine($"[Login] User not found or blocked: {request.Username}");
+                    return Ok(new LoginResponse { Success = false, Message = "Sai tài khoản hoặc mật khẩu!" });
                 }
-            }
 
-            if (!isValid)
-            {
+                bool isValid = false;
+                // Check if it is a BCrypt hash (usually starts with $2a$, $2b$, or $2y$)
+                if (user.PasswordHash != null && user.PasswordHash.StartsWith("$2") && user.PasswordHash.Length > 50)
+                {
+                    Console.WriteLine("[Login] Verifying with BCrypt...");
+                    isValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+                }
+                else
+                {
+                    Console.WriteLine("[Login] Verifying with legacy SHA256...");
+                    // Legacy SHA256 verification
+                    if (user.PasswordHash == HashPasswordLegacy(request.Password))
+                    {
+                        isValid = true;
+                        Console.WriteLine("[Login] Legacy match! Upgrading hash to BCrypt...");
+                        // Auto-upgrade password hash to BCrypt seamlessly
+                        user.PasswordHash = HashPassword(request.Password);
+                        await _db.SaveChangesAsync();
+                        Console.WriteLine("[Login] Hash upgraded successfully.");
+                    }
+                }
+
+                if (!isValid)
+                {
+                    Console.WriteLine($"[Login] Invalid password for: {request.Username}");
+                    return Ok(new LoginResponse
+                    {
+                        Success = false,
+                        Message = "Sai tài khoản hoặc mật khẩu!"
+                    });
+                }
+
+                Console.WriteLine($"[Login] SUCCESS for: {request.Username}");
                 return Ok(new LoginResponse
                 {
-                    Success = false,
-                    Message = "Sai tài khoản hoặc mật khẩu!"
+                    Success = true,
+                    Message = "Đăng nhập thành công",
+                    Username = user.Username,
+                    HoTen = user.HoTen,
+                    VaiTro = user.VaiTro,
+                    Avatar = user.Avatar
                 });
             }
-
-            return Ok(new LoginResponse
+            catch (Exception ex)
             {
-                Success = true,
-                Message = "Đăng nhập thành công",
-                Username = user.Username,
-                HoTen = user.HoTen,
-                VaiTro = user.VaiTro,
-                Avatar = user.Avatar
-            });
+                Console.WriteLine($"[Login] CRITICAL ERROR: {ex.Message}");
+                if (ex.InnerException != null) Console.WriteLine($"[Login] Inner Exception: {ex.InnerException.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return StatusCode(500, new { Message = "Lỗi hệ thống khi xử lý đăng nhập", Detail = ex.Message });
+            }
         }
 
         /// <summary>

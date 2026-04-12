@@ -109,6 +109,29 @@ namespace DHN_WF.Services
             return JsonConvert.DeserializeObject<List<ChiTietDotResponse>>(res) ?? new();
         }
 
+        public async Task<List<DocSoItemResponse>> GetDocSoByKyAsync(int maKyDoc)
+        {
+            var res = await _client.GetStringAsync($"DocChiSo/ky/{maKyDoc}");
+            return JsonConvert.DeserializeObject<List<DocSoItemResponse>>(res) ?? new();
+        }
+
+        public async Task<(int count, double tongTien, string message)> ChotHoaDonThangAsync(int maKyDoc)
+        {
+            var res = await _client.PostAsync($"DocChiSo/chot-hoa-don/{maKyDoc}", null);
+            var json = await res.Content.ReadAsStringAsync();
+            var obj = JsonConvert.DeserializeObject<dynamic>(json);
+            
+            if (res.IsSuccessStatusCode)
+            {
+                return (
+                    (int)(obj?.count ?? 0), 
+                    (double)(obj?.tongTienQuyetToan ?? 0), 
+                    (string)(obj?.message ?? "Thành công")
+                );
+            }
+            throw new Exception((string)(obj?.title ?? obj?.message ?? json));
+        }
+
         // ==================== UPLOAD ====================
 
         public async Task<string> UploadBienDongAsync(string filePath, int maKyDoc)

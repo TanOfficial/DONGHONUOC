@@ -36,8 +36,8 @@ namespace DHN_WF.Controls
             this.cboVaiTro = new ComboBox();
             
             this.panelButtons = new Panel();
-            this.btnHuy = new Button();
-            this.btnLuu = new Button();
+            this.btnHuy = new DHN_WF.CustomUI.ModernButton();
+            this.btnLuu = new DHN_WF.CustomUI.ModernButton();
             
             // Right Content
             this.panelGridHeader = new Panel();
@@ -161,13 +161,15 @@ namespace DHN_WF.Controls
             
             this.btnHuy.Text = "Hủy"; this.btnHuy.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             this.btnHuy.BackColor = Color.White; this.btnHuy.ForeColor = Color.FromArgb(107, 114, 128);
-            this.btnHuy.FlatStyle = FlatStyle.Flat; this.btnHuy.FlatAppearance.BorderColor = Color.FromArgb(209, 213, 219);
+            this.btnHuy.HoverColor = Color.FromArgb(243, 244, 246);
+            this.btnHuy.PressedColor = Color.FromArgb(229, 231, 235);
             this.btnHuy.Size = new Size(80, 40); this.btnHuy.Location = new Point(0, 0); this.btnHuy.Cursor = Cursors.Hand;
             this.btnHuy.Visible = false; this.btnHuy.Click += new EventHandler(this.BtnHuy_Click);
             
             this.btnLuu.Text = "Tạo Tài Khoản"; this.btnLuu.Font = new Font("Segoe UI", 10, FontStyle.Bold);
-            this.btnLuu.BackColor = Color.FromArgb(37, 99, 235); this.btnLuu.ForeColor = Color.White;
-            this.btnLuu.FlatStyle = FlatStyle.Flat; this.btnLuu.FlatAppearance.BorderSize = 0;
+            this.btnLuu.BackColor = DHN_WF.CustomUI.UIConstants.PrimaryColor; this.btnLuu.ForeColor = Color.White;
+            this.btnLuu.HoverColor = DHN_WF.CustomUI.UIConstants.PrimaryHover;
+            this.btnLuu.PressedColor = DHN_WF.CustomUI.UIConstants.PrimaryPressed;
             this.btnLuu.Size = new Size(190, 40); this.btnLuu.Location = new Point(90, 0); this.btnLuu.Cursor = Cursors.Hand;
             this.btnLuu.Click += new EventHandler(this.BtnLuu_Click);
             this.panelButtons.Controls.AddRange(new Control[] { btnHuy, btnLuu });
@@ -265,7 +267,7 @@ namespace DHN_WF.Controls
         private Label lblHoTenL; private Panel pnlHoTen; private TextBox txtHoTen;
         private Label lblVaiTroL; private Panel pnlVaiTro; private ComboBox cboVaiTro;
         
-        private Panel panelButtons; private Button btnHuy, btnLuu;
+        private Panel panelButtons; private DHN_WF.CustomUI.ModernButton btnHuy, btnLuu;
         private Panel panelGridHeader; private Label lblGridHeader;
         private DataGridView dgvUsers;
         private DataGridViewButtonColumn colEdit;

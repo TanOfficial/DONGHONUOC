@@ -98,7 +98,13 @@ namespace DONGHONUOC_API.Models
         [Column("DM")]
         public string? DM { get; set; }
 
+        [Column("May")]
+        public string? May { get; set; }
+
         [Column("Dot")]
+        public string? Dot { get; set; }
+
+        [Column("MLT1")]
         public string? MaLoTrinh { get; set; }
         [Column("HieuMoi")]
         public string? Hieu { get; set; }
@@ -120,5 +126,8 @@ namespace DONGHONUOC_API.Models
 
         [Column("DenNgay")]
         public DateTime? DenNgay { get; set; }
+
+        [Column("ChuBao")]
+        public bool ChuBao { get; set; } = false;
     }
 }
