@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider } from './src/context/AuthContext';
+import { NotificationProvider } from './src/context/NotificationContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Font from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -24,10 +26,14 @@ export default function App() {
   if (!fontLoaded) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <AppNavigator />
-      </AuthProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NotificationProvider>
+          <AuthProvider>
+            <AppNavigator />
+          </AuthProvider>
+        </NotificationProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

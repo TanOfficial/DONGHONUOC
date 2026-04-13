@@ -30,6 +30,13 @@ namespace DHN_WF.CustomUI
         public static readonly Color GridHeaderBackground = Color.FromArgb(237, 242, 247); // Light gray-blue
         public static readonly Color GridRowAlternate = Color.FromArgb(250, 250, 250);
 
+        // Notification Colors (30% Alpha borders)
+        public static readonly Color InfoBorder = Color.FromArgb(77, 33, 150, 243);
+        public static readonly Color SuccessBorder = Color.FromArgb(77, 76, 175, 80);
+        public static readonly Color WarningBorder = Color.FromArgb(77, 255, 152, 0);
+        public static readonly Color DangerBorder = Color.FromArgb(77, 244, 67, 54);
+        public static readonly Color NotificationBg = Color.FromArgb(240, 255, 255, 255); // Semi-transparent white
+
         // Fonts
         public static readonly Font HeaderFont = new Font("Segoe UI", 12F, FontStyle.Bold);
         public static readonly Font SubHeaderFont = new Font("Segoe UI", 10F, FontStyle.Bold);

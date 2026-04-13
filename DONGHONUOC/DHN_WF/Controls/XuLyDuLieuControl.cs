@@ -1,5 +1,6 @@
 using DHN_WF.Models;
 using DHN_WF.Services;
+using DHN_WF.CustomUI;
 
 namespace DHN_WF.Controls
 {
@@ -47,7 +48,7 @@ namespace DHN_WF.Controls
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Lỗi tải kỳ đọc: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                NotificationManager.Show("Lỗi", "Lỗi tải kỳ đọc: " + ex.Message, NotificationType.Error);
             }
         }
 
@@ -66,7 +67,7 @@ namespace DHN_WF.Controls
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Lỗi tải dữ liệu: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                NotificationManager.Show("Lỗi", "Lỗi tải dữ liệu: " + ex.Message, NotificationType.Error);
             }
             finally
             {
@@ -79,9 +80,10 @@ namespace DHN_WF.Controls
         {
             if (cboKy.SelectedItem is not KyDocModel ky) return;
 
-            var confirmResult = MessageBox.Show(
+            var confirmResult = NotificationManager.Confirm(
+                "Xác nhận Chốt Hóa Đơn",
                 $"Bạn có chắc chắn muốn CHỐT HÓA ĐƠN TIỀN NƯỚC cho {ky}?\nHệ thống sẽ tính toán tiền ứng với các khách hàng Đã Đọc Số.",
-                "Xác nhận Chốt Hóa Đơn", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                MessageBoxButtons.YesNo, NotificationType.Warning);
 
             if (confirmResult != DialogResult.Yes) return;
 
@@ -91,14 +93,14 @@ namespace DHN_WF.Controls
             try
             {
                 var result = await _api.ChotHoaDonThangAsync(ky.MaKyDoc);
-                MessageBox.Show($"Thành công!\n{result.message}\nTổng tiền: {result.tongTien:N0} VNĐ", "Hoàn Tất", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                NotificationManager.Show("Hoàn Tất", $"Thành công!\n{result.message}\nTổng tiền: {result.tongTien:N0} VNĐ", NotificationType.Success);
                 
                 // Reload data to see changes
                 BtnXem_Click(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Lỗi khi chốt số: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                NotificationManager.Show("Lỗi", "Lỗi khi chốt số: " + ex.Message, NotificationType.Error);
             }
             finally
             {

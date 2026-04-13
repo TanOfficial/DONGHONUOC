@@ -1,4 +1,6 @@
 using DHN_WF.Services;
+using DHN_WF.CustomUI;
+using System.Drawing.Drawing2D;
 
 namespace DHN_WF.Forms
 {
@@ -33,26 +35,65 @@ namespace DHN_WF.Forms
             }
         }
 
-
-
         private void PaintLogo()
         {
-            // Make logo circle via Region
-            System.Drawing.Drawing2D.GraphicsPath path = new();
-            path.AddEllipse(0, 0, panelLogo.Width, panelLogo.Height);
-            panelLogo.Region = new Region(path);
+            // Update labels for branding
+            lblTitle.Text = ""; 
+            lblTitle.Height = 0;
+            lblSubtitle.Text = "Hệ thống Quản Lý Đọc Số";
+            
+            panelLogo.Size = new Size(110, 110);
+            if (panelCard != null) panelLogo.Left = (panelCard.Width - panelLogo.Width) / 2;
+            panelLogo.BackColor = Color.White;
+            panelLogo.BorderStyle = BorderStyle.None;
+            panelLogo.Region = null;
 
-            // Draw water drop icon on panelLogo
+            // Search for logo in multiple possible locations
+            string[] possiblePaths = {
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.png"),
+                Path.Combine(Directory.GetCurrentDirectory(), "Resources", "logo.png"),
+                Path.Combine(Directory.GetCurrentDirectory(), "DHN_WF", "Resources", "logo.png"),
+                "D:\\ThucTap\\Hinh\\Logo\\logo.png" 
+            };
+
+            string? finalPath = null;
+            foreach (var path in possiblePaths) {
+                if (File.Exists(path)) {
+                    finalPath = path;
+                    break;
+                }
+            }
+
+            // Draw circular border and image
             panelLogo.Paint += (s, e) =>
             {
-                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                using var pen = new Pen(Color.White, 2.5f);
-                // Simple water drop: circle bottom, tapering top
                 var g = e.Graphics;
-                g.FillEllipse(Brushes.White, 18, 32, 28, 22);
-                var pts = new PointF[] { new(32, 8), new(18, 32), new(46, 32) };
-                g.FillPolygon(Brushes.White, pts);
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                
+                // Draw soft circular border
+                using (var pen = new Pen(Color.FromArgb(40, Color.SteelBlue), 2f))
+                {
+                    g.DrawEllipse(pen, 1, 1, panelLogo.Width - 3, panelLogo.Height - 3);
+                }
+
+                if (finalPath != null && File.Exists(finalPath))
+                {
+                    using (var img = Image.FromFile(finalPath))
+                    {
+                        // Draw image centered in the circle with less padding
+                        float ratio = Math.Min((float)(panelLogo.Width - 6) / img.Width, (float)(panelLogo.Height - 6) / img.Height);
+                        int nw = (int)(img.Width * ratio);
+                        int nh = (int)(img.Height * ratio);
+                        g.DrawImage(img, (panelLogo.Width - nw) / 2, (panelLogo.Height - nh) / 2, nw, nh);
+                    }
+                }
+                else
+                {
+                    // Fallback
+                    g.FillEllipse(Brushes.LightSteelBlue, 15, 15, panelLogo.Width - 30, panelLogo.Height - 30);
+                }
             };
+
             panelLogo.Invalidate();
         }
 
@@ -62,66 +103,51 @@ namespace DHN_WF.Forms
             {
                 lblError.Visible = false;
                 lblError.Height = 0;
-                // Shift fields up to default
-                lblUsername.Top = 180;
-                txtUsername.Top = 202;
-                lblPassword.Top = 244;
-                txtPassword.Top = 266;
-                btnLogin.Top = 322;
             }
             else
             {
-                lblError.Text = msg;
-                // Calculate required height for text
-                Size size = TextRenderer.MeasureText(msg, lblError.Font, new Size(lblError.Width, 1000), TextFormatFlags.WordBreak);
-                lblError.Height = size.Height + 12; 
-                lblError.Visible = true;
-
-                // Shift fields down based on error height
-                int offset = lblError.Height + 10;
-                lblUsername.Top = 150 + offset;
-                txtUsername.Top = 172 + offset;
-                lblPassword.Top = 214 + offset;
-                txtPassword.Top = 236 + offset;
-                btnLogin.Top = 292 + offset;
+                NotificationManager.Show("Lỗi", msg, NotificationType.Error);
             }
         }
 
         private async void BtnLogin_Click(object sender, EventArgs e)
         {
-            ShowError("");
-            btnLogin.Text = "Đang xác thực...";
-            btnLogin.Enabled = false;
+            string username = txtUsername.Text.Trim();
+            string password = txtPassword.Text.Trim();
+
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            {
+                ShowError("Vui lòng nhập đầy đủ tài khoản và mật khẩu.");
+                return;
+            }
 
             try
             {
-                var result = await _api.LoginAsync(txtUsername.Text.Trim(), txtPassword.Text);
-                if (result == null)
-                {
-                    ShowError("Lỗi kết nối đến máy chủ.");
-                    return;
-                }
-                if (result.Success)
+                btnLogin.Enabled = false;
+                btnLogin.Text = "Đang xử lý...";
+
+                var result = await _api.LoginAsync(username, password);
+
+                if (result != null && result.Success)
                 {
                     AppSession.CurrentUser = result;
                     var main = new MainForm();
                     main.Show();
                     this.Hide();
-                    main.FormClosed += (_, _) => { this.Show(); AppSession.Clear(); txtPassword.Clear(); ShowError(""); btnLogin.Text = "Đăng Nhập"; };
                 }
                 else
                 {
-                    ShowError(result.Message ?? "Đăng nhập thất bại.");
+                    ShowError("Sai tài khoản hoặc mật khẩu.");
                 }
             }
             catch (Exception ex)
             {
-                ShowError("Lỗi kết nối. Hãy đảm bảo DONGHONUOC_API đang chạy.\n" + ex.Message);
+                ShowError("Lỗi kết nối: " + ex.Message);
             }
             finally
             {
-                btnLogin.Text = "Đăng Nhập";
                 btnLogin.Enabled = true;
+                btnLogin.Text = "Đăng Nhập";
             }
         }
     }

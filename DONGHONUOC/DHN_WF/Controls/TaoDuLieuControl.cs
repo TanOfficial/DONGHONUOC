@@ -1,5 +1,6 @@
 using DHN_WF.Models;
 using DHN_WF.Services;
+using DHN_WF.CustomUI;
 
 namespace DHN_WF.Controls
 {
@@ -29,7 +30,7 @@ namespace DHN_WF.Controls
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Lỗi tải kỳ đọc: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                NotificationManager.Show("Lỗi", "Lỗi tải kỳ đọc: " + ex.Message, NotificationType.Error);
             }
         }
 
@@ -53,8 +54,8 @@ namespace DHN_WF.Controls
 
         private async void BtnThemFile_Click(object sender, EventArgs e)
         {
-            if (_selectedFilePath == null) { MessageBox.Show("Vui lòng chọn file trước!"); return; }
-            if (cboKy.SelectedItem is not KyDocModel ky) { MessageBox.Show("Vui lòng chọn kỳ đọc!"); return; }
+            if (_selectedFilePath == null) { NotificationManager.Show("Thông báo", "Vui lòng chọn file trước!", NotificationType.Warning); return; }
+            if (cboKy.SelectedItem is not KyDocModel ky) { NotificationManager.Show("Thông báo", "Vui lòng chọn kỳ đọc!", NotificationType.Warning); return; }
 
             btnThemFile.Enabled = false;
             btnThemFile.Text = "Đang import...";
@@ -124,7 +125,7 @@ namespace DHN_WF.Controls
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Lỗi tải dữ liệu: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                NotificationManager.Show("Lỗi", "Lỗi tải dữ liệu: " + ex.Message, NotificationType.Error);
             }
             finally
             {

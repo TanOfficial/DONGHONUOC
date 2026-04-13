@@ -15,6 +15,7 @@ import InputDialog from '../components/common/InputDialog';
 import OptionDialog, { DialogOption } from '../components/common/OptionDialog';
 import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
+import { codeOptions } from '../constants/CodeConstants';
 
 interface Customer {
     ma_danh_bo: string;
@@ -86,32 +87,7 @@ const GhiNuocScreen = () => {
 
     const [infoModalVisible, setInfoModalVisible] = useState(false);
 
-    const codeOptions: DialogOption[] = [
-        { label: '40 - ĐH bình thường', icon: 'checkmark-circle-outline', value: '40', color: '#4CAF50' },
-        { label: '41 - Chủ ghi', icon: 'person-outline', value: '41', color: '#2196F3' },
-        { label: '42 - Chủ báo', icon: 'megaphone-outline', value: '42', color: '#2196F3' },
-        { label: '43 - Chủ đọc', icon: 'eye-outline', value: '43', color: '#2196F3' },
-        { label: '45 - Âm sâu, Kẹt tường', icon: 'construct-outline', value: '45', color: '#795548' },
-        { label: '46 - ĐHN mất tín hiệu', icon: 'wifi-outline', value: '46', color: '#F44336' },
-        { label: 'F1 - CÓ Ở', icon: 'home-outline', value: 'F1', color: '#4CAF50' },
-        { label: 'F2 - KẸT KHÓA', icon: 'lock-closed-outline', value: 'F2', color: '#FF9800' },
-        { label: 'F3 - CHẤT ĐỒ', icon: 'cube-outline', value: 'F3', color: '#9E9E9E' },
-        { label: 'F4 - ĐÁM TANG', icon: 'alert-circle-outline', value: 'F4', color: '#E91E63' },
-        { label: 'F5 - KHÔNG Ở', icon: 'close-outline', value: 'F5', color: '#607D8B' },
-        { label: 'F6 - ĐHN TM HƯ', icon: 'settings-outline', value: 'F6', color: '#D32F2F' },
-        { label: '80 - THAY CHƯA ĐỦ NGÀY', icon: 'calendar-outline', value: '80', color: '#2196F3' },
-        { label: '81 - THAY BỒI THƯỜNG', icon: 'build-outline', value: '81', color: '#2196F3' },
-        { label: '82 - THAY ĐỊNH KỲ', icon: 'infinite-outline', value: '82', color: '#2196F3' },
-        { label: '83 - KIỂM ĐỊNH', icon: 'medal-outline', value: '83', color: '#2196F3' },
-        { label: '84 - NÂNG HẠ CỠ', icon: 'resize-outline', value: '84', color: '#2196F3' },
-        { label: '85 - ĐHN HAI MẶT', icon: 'copy-outline', value: '85', color: '#2196F3' },
-        { label: '86 - RESET', icon: 'refresh-circle-outline', value: '86', color: '#2196F3' },
-        { label: 'K - CẮT TẠM', icon: 'cut-outline', value: 'K', color: '#F44336' },
-        { label: 'K1 - TẠM KHÓA NƯỚC', icon: 'lock-closed-outline', value: 'K1', color: '#F44336' },
-        { label: 'K2 - CẮT TẠM', icon: 'close-circle-outline', value: 'K2', color: '#F44336' },
-        { label: 'K3 - CẮT TẬN GỐC', icon: 'nuclear-outline', value: 'K3', color: '#D32F2F' },
-        { label: 'K4 - TỰ Ý MỞ CHÌ', icon: 'warning-outline', value: 'K4', color: '#FF9800' },
-    ];
+
 
     useEffect(() => {
         loadData();

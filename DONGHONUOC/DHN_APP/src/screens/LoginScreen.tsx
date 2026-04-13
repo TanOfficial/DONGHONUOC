@@ -11,6 +11,7 @@ import {
     Platform,
     ActivityIndicator,
     Modal,
+    Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -132,7 +133,11 @@ const LoginScreen = () => {
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     <View style={styles.logoContainer}>
                         <View style={styles.logoCircle}>
-                            <Ionicons name="water" size={60} color="white" />
+                            <Image
+                                source={require('../../assets/logo.png')}
+                                style={styles.logoImage}
+                                resizeMode="contain"
+                            />
                         </View>
                     </View>
 
@@ -241,14 +246,25 @@ const styles = StyleSheet.create({
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: '#2196F3',
+        backgroundColor: 'white',
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    logoImage: {
+        width: 70,
+        height: 70,
+    },
+    brandName: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: '#1976D2',
+        marginTop: 12,
+        letterSpacing: 2,
     },
     title: {
         fontSize: 24,

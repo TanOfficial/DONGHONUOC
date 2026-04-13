@@ -11,8 +11,7 @@ const TIMEOUT_MS = 10000; // 10 seconds
 
 class ApiService {
     private static instance: ApiService;
-    // Cập nhật đường dẫn Cloudflare Tunnel để truy cập từ xa
-    private baseUrl: string = `https://thermal-excluding-gmbh-use.trycloudflare.com/api`;
+    private baseUrl: string = `http://${DEFAULT_IP}:${PORT}/api`;
     private currentUsername: string | null = null;
 
     private constructor() {
@@ -27,8 +26,6 @@ class ApiService {
     }
 
     private async loadBaseUrl() {
-        // Tạm thời bỏ qua việc load từ bộ nhớ để ép App dùng Cloudflare Tunnel
-        /*
         const savedUrlOrIp = await AsyncStorage.getItem('server_ip');
         if (savedUrlOrIp) {
             if (savedUrlOrIp.startsWith('http')) {
@@ -37,7 +34,6 @@ class ApiService {
                 this.baseUrl = `http://${savedUrlOrIp}:${PORT}/api`;
             }
         }
-        */
         console.log('🌐 API BaseURL:', this.baseUrl);
     }
 

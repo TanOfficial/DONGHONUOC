@@ -1,5 +1,6 @@
 using DHN_WF.Models;
 using DHN_WF.Services;
+using DHN_WF.CustomUI;
 
 namespace DHN_WF.Controls
 {
@@ -38,7 +39,7 @@ namespace DHN_WF.Controls
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Lỗi tải danh sách kỳ: " + ex.Message);
+                NotificationManager.Show("Lỗi", "Lỗi tải danh sách kỳ: " + ex.Message, NotificationType.Error);
             }
         }
 
@@ -76,7 +77,7 @@ namespace DHN_WF.Controls
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Lỗi tải chi tiết đợt: " + ex.Message);
+                NotificationManager.Show("Lỗi", "Lỗi tải chi tiết đợt: " + ex.Message, NotificationType.Error);
             }
         }
 
@@ -89,50 +90,50 @@ namespace DHN_WF.Controls
 
         private async void BtnThem_Click(object sender, EventArgs e)
         {
-            if (nudKy.Value < 1 || nudNam.Value < 2000) { MessageBox.Show("Vui lòng nhập Kỳ và Năm hợp lệ!"); return; }
+            if (nudKy.Value < 1 || nudNam.Value < 2000) { NotificationManager.Show("Thông báo", "Vui lòng nhập Kỳ và Năm hợp lệ!", NotificationType.Warning); return; }
             string? tuNgay = chkTuNgay.Checked ? dtpTuNgay.Value.ToString("yyyy-MM-dd") : null;
             string? denNgay = chkDenNgay.Checked ? dtpDenNgay.Value.ToString("yyyy-MM-dd") : null;
             if (tuNgay != null && denNgay != null && tuNgay.CompareTo(denNgay) > 0)
-            { MessageBox.Show("Từ Ngày phải nhỏ hơn hoặc bằng Đến Ngày!"); return; }
+            { NotificationManager.Show("Thông báo", "Từ Ngày phải nhỏ hơn hoặc bằng Đến Ngày!", NotificationType.Warning); return; }
             try
             {
                 await _api.CreateKyDocAsync((int)nudKy.Value, (int)nudNam.Value, tuNgay, denNgay);
-                MessageBox.Show("Thêm kỳ đọc thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                NotificationManager.Show("Thành công", "Thêm kỳ đọc thành công!", NotificationType.Success);
                 await LoadKyDocs();
             }
-            catch (Exception ex) { MessageBox.Show("Lỗi khi thêm: " + ex.Message); }
+            catch (Exception ex) { NotificationManager.Show("Lỗi", "Lỗi khi thêm: " + ex.Message, NotificationType.Error); }
         }
 
         private async void BtnSua_Click(object sender, EventArgs e)
         {
-            if (_selectedKy == null) { MessageBox.Show("Vui lòng chọn một kỳ để sửa!"); return; }
+            if (_selectedKy == null) { NotificationManager.Show("Thông báo", "Vui lòng chọn một kỳ để sửa!", NotificationType.Warning); return; }
             string? tuNgay = chkTuNgay.Checked ? dtpTuNgay.Value.ToString("yyyy-MM-dd") : null;
             string? denNgay = chkDenNgay.Checked ? dtpDenNgay.Value.ToString("yyyy-MM-dd") : null;
             if (tuNgay != null && denNgay != null && tuNgay.CompareTo(denNgay) > 0)
-            { MessageBox.Show("Từ Ngày phải nhỏ hơn hoặc bằng Đến Ngày!"); return; }
+            { NotificationManager.Show("Thông báo", "Từ Ngày phải nhỏ hơn hoặc bằng Đến Ngày!", NotificationType.Warning); return; }
             try
             {
                 await _api.UpdateKyDocAsync(_selectedKy.MaKyDoc, (int)nudKy.Value, (int)nudNam.Value, tuNgay, denNgay);
-                MessageBox.Show("Cập nhật kỳ đọc thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                NotificationManager.Show("Thành công", "Cập nhật kỳ đọc thành công!", NotificationType.Success);
                 await LoadKyDocs();
             }
-            catch (Exception ex) { MessageBox.Show("Lỗi khi cập nhật: " + ex.Message); }
+            catch (Exception ex) { NotificationManager.Show("Lỗi", "Lỗi khi cập nhật: " + ex.Message, NotificationType.Error); }
         }
 
         private async void BtnXoa_Click(object sender, EventArgs e)
         {
-            if (_selectedKy == null) { MessageBox.Show("Vui lòng chọn một kỳ để xóa!"); return; }
-            if (MessageBox.Show("Bạn có chắc chắn muốn xóa kỳ đọc này?\nToàn bộ dữ liệu đọc số trong kỳ này có thể bị ảnh hưởng.",
-                "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+            if (_selectedKy == null) { NotificationManager.Show("Thông báo", "Vui lòng chọn một kỳ để xóa!", NotificationType.Warning); return; }
+            if (NotificationManager.Confirm("Xác nhận xóa", "Bạn có chắc chắn muốn xóa kỳ đọc này?\nToàn bộ dữ liệu đọc số trong kỳ này có thể bị ảnh hưởng.",
+                MessageBoxButtons.YesNo, NotificationType.Warning) != DialogResult.Yes) return;
             try
             {
                 await _api.DeleteKyDocAsync(_selectedKy.MaKyDoc);
-                MessageBox.Show("Xóa thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                NotificationManager.Show("Thành công", "Xóa thành công!", NotificationType.Success);
                 _selectedKy = null;
                 dgvChiTiet.Rows.Clear();
                 await LoadKyDocs();
             }
-            catch (Exception ex) { MessageBox.Show("Lỗi khi xóa: " + ex.Message); }
+            catch (Exception ex) { NotificationManager.Show("Lỗi", "Lỗi khi xóa: " + ex.Message, NotificationType.Error); }
         }
 
         private void BtnMoi_Click(object sender, EventArgs e)

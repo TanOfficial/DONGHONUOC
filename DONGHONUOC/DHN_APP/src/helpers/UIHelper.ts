@@ -1,14 +1,19 @@
 import { Alert, ToastAndroid, Platform } from 'react-native';
 
 class UIHelper {
+    private static showNotificationFunc: (title: string, message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
+
+    public static setNotificationHandler(handler: typeof UIHelper.showNotificationFunc) {
+        this.showNotificationFunc = handler;
+    }
+
     public static showCustomSnackBar(message: string, isError = false, isSuccess = false) {
-        if (Platform.OS === 'android') {
-            ToastAndroid.show(message, ToastAndroid.SHORT);
+        if (this.showNotificationFunc) {
+            const type = isError ? 'error' : isSuccess ? 'success' : 'info';
+            const title = isError ? 'Lỗi' : isSuccess ? 'Thành công' : 'Thông báo';
+            this.showNotificationFunc(title, message, type);
         } else {
-            // For iOS, usually one uses a library or custom component.
-            // For simplicity in this migration, let's use Alert or a generic log.
-            // We can also implement a custom component later.
-            console.log(`[${isError ? 'ERROR' : isSuccess ? 'SUCCESS' : 'INFO'}] ${message}`);
+            console.log(`[SNACKBAR] ${message}`);
         }
     }
 
