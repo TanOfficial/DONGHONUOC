@@ -153,5 +153,40 @@ namespace DHN_WF.Services
             }
             throw new Exception(json);
         }
+
+        // ==================== AI OCR ====================
+
+        public async Task<string?> DocSoAIAsync(string hinhAnhBase64)
+        {
+            try
+            {
+                // Server AI mới chạy trên port 8001
+                var ip = _client.BaseAddress?.Host ?? "127.0.0.1";
+                var aiUrl = $"http://{ip}:8001/api/doc-so-moi";
+
+                using var content = new MultipartFormDataContent();
+                
+                // Chuyển Base64 về bytes để upload
+                byte[] imageBytes = Convert.FromBase64String(hinhAnhBase64.Contains(",") ? hinhAnhBase64.Split(',')[1] : hinhAnhBase64);
+                var byteContent = new ByteArrayContent(imageBytes);
+                byteContent.Headers.ContentType = MediaTypeHeaderValue.Parse("image/jpeg");
+                content.Add(byteContent, "file", "photo.jpg");
+
+                var res = await _client.PostAsync(aiUrl, content);
+                if (res.IsSuccessStatusCode)
+                {
+                    var json = await res.Content.ReadAsStringAsync();
+                    dynamic? obj = JsonConvert.DeserializeObject(json);
+                    bool success = obj?.success ?? false;
+                    return success ? (string?)obj?.result : null;
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("❌ AI Error: " + ex.Message);
+                return null;
+            }
+        }
     }
 }

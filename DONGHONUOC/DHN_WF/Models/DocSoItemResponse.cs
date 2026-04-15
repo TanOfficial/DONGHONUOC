@@ -31,5 +31,6 @@ namespace DHN_WF.Models
         
         public string? GB { get; set; }
         public string? DM { get; set; }
+        public string? HinhAnh { get; set; }
     }
 }

@@ -10,6 +10,7 @@ namespace DHN_WF.Controls
         private DHN_WF.CustomUI.ModernButton btnXem;
         private DHN_WF.CustomUI.ModernButton btnChot;
         private System.Windows.Forms.DataGridView dgvData;
+        private DHN_WF.CustomUI.ModernButton btnAI;
         private System.Windows.Forms.Panel panelBottom;
         private System.Windows.Forms.Label lblThongKe;
 
@@ -38,6 +39,7 @@ namespace DHN_WF.Controls
             // panelTop
             // 
             this.panelTop.BackColor = System.Drawing.Color.White;
+            this.panelTop.Controls.Add(this.btnAI);
             this.panelTop.Controls.Add(this.btnChot);
             this.panelTop.Controls.Add(this.btnXem);
             this.panelTop.Controls.Add(this.lblKy);
@@ -109,6 +111,27 @@ namespace DHN_WF.Controls
             this.lblTitle.Size = new System.Drawing.Size(252, 30);
             this.lblTitle.TabIndex = 0;
             this.lblTitle.Text = "XỬ LÝ DỮ LIỆU ĐỌC SỐ";
+            // 
+            // btnAI
+            // 
+            this.btnAI.BackColor = System.Drawing.Color.FromArgb(236, 254, 255);
+            this.btnAI.ForeColor = System.Drawing.Color.FromArgb(8, 145, 178);
+            this.btnAI.HoverColor = System.Drawing.Color.FromArgb(207, 250, 254);
+            this.btnAI.PressedColor = System.Drawing.Color.FromArgb(165, 243, 252);
+            this.btnAI.BorderRadius = 8;
+            this.btnAI.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.btnAI.Location = new System.Drawing.Point(440, 12);
+            this.btnAI.Name = "btnAI";
+            this.btnAI.Size = new System.Drawing.Size(150, 36);
+            this.btnAI.TabIndex = 5;
+            this.btnAI.Text = "Phân tích AI";
+            this.btnAI.Click += new System.EventHandler(this.BtnAI_Click);
+            //
+            // Adjust other elements to avoid overlapping
+            this.lblKy.Location = new System.Drawing.Point(600, 20);
+            this.cboKy.Location = new System.Drawing.Point(660, 16);
+            this.btnXem.Location = new System.Drawing.Point(870, 12);
+            this.btnChot.Location = new System.Drawing.Point(1000, 12); // Move it out or hide it to focus on layout
             // 
             // dgvData
             // 

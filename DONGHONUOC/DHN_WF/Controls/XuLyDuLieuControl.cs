@@ -109,6 +109,51 @@ namespace DHN_WF.Controls
             }
         }
 
+        private async void BtnAI_Click(object sender, EventArgs e)
+        {
+            if (dgvData.SelectedRows.Count == 0)
+            {
+                NotificationManager.Show("Thông báo", "Vui lòng chọn một dòng để phân tích!", NotificationType.Warning);
+                return;
+            }
+
+            if (dgvData.SelectedRows[0].DataBoundItem is DocSoItemResponse row)
+            {
+                if (string.IsNullOrEmpty(row.HinhAnh))
+                {
+                    NotificationManager.Show("Lỗi", "Khách hàng này chưa có hình ảnh để phân tích AI.", NotificationType.Error);
+                    return;
+                }
+
+                btnAI.Enabled = false;
+                btnAI.Text = "Đang phân tích...";
+
+                try
+                {
+                    string? result = await _api.DocSoAIAsync(row.HinhAnh);
+                    if (result != null)
+                    {
+                        NotificationManager.Show("Kết quả AI", 
+                            $"Số đọc được từ hình ảnh là: {result}\nChỉ số hiện tại trên hệ thống: {(row.ChiSoMoi?.ToString() ?? "Chưa nhập")}", 
+                            NotificationType.Success);
+                    }
+                    else
+                    {
+                        NotificationManager.Show("AI thất bại", "AI không thể đọc được số từ hình ảnh này hoặc server AI chưa bật.", NotificationType.Warning);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    NotificationManager.Show("Lỗi Hệ Thống", "Lỗi khi gọi AI: " + ex.Message, NotificationType.Error);
+                }
+                finally
+                {
+                    btnAI.Enabled = true;
+                    btnAI.Text = "Phân tích AI";
+                }
+            }
+        }
+
         private void UpdateThongKe()
         {
             if (_currentData == null || !_currentData.Any())

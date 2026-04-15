@@ -378,7 +378,7 @@ class ApiService {
         const serverIp = ipMatch ? ipMatch[1] : DEFAULT_IP;
         
         try {
-            const response = await fetch(`http://${serverIp}:8000/api/doc-so`, {
+            const response = await fetch(`http://${serverIp}:8001/api/doc-so-moi`, {
                 method: 'POST',
                 body: formData,
             });
