@@ -265,6 +265,20 @@ class ApiService {
         }
     }
 
+    public async capNhatHieu(maDanhBo: string, maKyDoc: number, hieu: string) {
+        try {
+            await axios.put(`${this.baseUrl}/docchiso/hieu`, {
+                MaDanhBo: maDanhBo,
+                MaKyDoc: maKyDoc,
+                Hieu: hieu
+            });
+            return true;
+        } catch (e) {
+            console.error('❌ Lỗi cập nhật hãng đồng hồ:', e);
+            return false;
+        }
+    }
+
     public async capNhatHinhAnh(maDanhBo: string, maKyDoc: number, hinhAnhBase64: string) {
         try {
             await axios.put(`${this.baseUrl}/docchiso/image`, {

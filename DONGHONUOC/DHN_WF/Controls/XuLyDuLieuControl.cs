@@ -24,15 +24,15 @@ namespace DHN_WF.Controls
             dgvData.Columns.Clear();
 
             dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Danh Bộ", DataPropertyName = "MaDanhBo", Width = 110 });
-            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Khách Hàng", DataPropertyName = "HoTen", Width = 160 });
-            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "CS Cũ", DataPropertyName = "ChiSoCu", Width = 70 });
-            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "CS Mới", DataPropertyName = "ChiSoMoi", Width = 70 });
-            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tiêu Thụ", DataPropertyName = "TieuThu", Width = 80 });
-            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Định Mức", DataPropertyName = "DM", Width = 80 });
-            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Giá Biểu", DataPropertyName = "GB", Width = 80 });
-            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tiền Nước", DataPropertyName = "TienNuoc", Width = 100, DefaultCellStyle = new DataGridViewCellStyle { Format = "N0" } });
-            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tổng Tiền", DataPropertyName = "TongCong", Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N0" } });
-            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Trạng Thái", DataPropertyName = "TrangThai", Width = 100 });
+            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Khách Hàng", DataPropertyName = "HoTen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, MinimumWidth = 150 });
+            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "CS Cũ", DataPropertyName = "ChiSoCu", Width = 80 });
+            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "CS Mới", DataPropertyName = "ChiSoMoi", Width = 80 });
+            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tiêu Thụ", DataPropertyName = "TieuThu", Width = 90 });
+            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Định Mức", DataPropertyName = "DM", Width = 90 });
+            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Giá Biểu", DataPropertyName = "GB", Width = 85 });
+            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tiền Nước", DataPropertyName = "TienNuoc", Width = 110, DefaultCellStyle = new DataGridViewCellStyle { Format = "N0" } });
+            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tổng Tiền", DataPropertyName = "TongCong", Width = 130, DefaultCellStyle = new DataGridViewCellStyle { Format = "N0" } });
+            dgvData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Trạng Thái", DataPropertyName = "TrangThai", Width = 110 });
         }
 
         private async Task LoadKyDocs()
@@ -106,51 +106,6 @@ namespace DHN_WF.Controls
             {
                 btnChot.Enabled = true;
                 btnChot.Text = "Chốt Hóa Đơn Kỳ Này";
-            }
-        }
-
-        private async void BtnAI_Click(object sender, EventArgs e)
-        {
-            if (dgvData.SelectedRows.Count == 0)
-            {
-                NotificationManager.Show("Thông báo", "Vui lòng chọn một dòng để phân tích!", NotificationType.Warning);
-                return;
-            }
-
-            if (dgvData.SelectedRows[0].DataBoundItem is DocSoItemResponse row)
-            {
-                if (string.IsNullOrEmpty(row.HinhAnh))
-                {
-                    NotificationManager.Show("Lỗi", "Khách hàng này chưa có hình ảnh để phân tích AI.", NotificationType.Error);
-                    return;
-                }
-
-                btnAI.Enabled = false;
-                btnAI.Text = "Đang phân tích...";
-
-                try
-                {
-                    string? result = await _api.DocSoAIAsync(row.HinhAnh);
-                    if (result != null)
-                    {
-                        NotificationManager.Show("Kết quả AI", 
-                            $"Số đọc được từ hình ảnh là: {result}\nChỉ số hiện tại trên hệ thống: {(row.ChiSoMoi?.ToString() ?? "Chưa nhập")}", 
-                            NotificationType.Success);
-                    }
-                    else
-                    {
-                        NotificationManager.Show("AI thất bại", "AI không thể đọc được số từ hình ảnh này hoặc server AI chưa bật.", NotificationType.Warning);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    NotificationManager.Show("Lỗi Hệ Thống", "Lỗi khi gọi AI: " + ex.Message, NotificationType.Error);
-                }
-                finally
-                {
-                    btnAI.Enabled = true;
-                    btnAI.Text = "Phân tích AI";
-                }
             }
         }
 

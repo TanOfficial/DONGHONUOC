@@ -191,6 +191,14 @@ class DatabaseHelper {
         );
     }
 
+    public async capNhatHieu(maDB: string, hieu: string) {
+        if (!this.db) await this.init();
+        await this.db!.runAsync(
+            'UPDATE khach_hang SET hieu = ? WHERE ma_danh_bo = ?',
+            [hieu, maDB]
+        );
+    }
+
     public async demTongKhach() {
         if (!this.db) await this.init();
         const result = await this.db!.getFirstAsync<any>('SELECT COUNT(*) as count FROM khach_hang');

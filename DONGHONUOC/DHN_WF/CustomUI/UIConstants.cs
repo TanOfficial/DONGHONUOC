@@ -57,7 +57,7 @@ namespace DHN_WF.CustomUI
             grid.ColumnHeadersDefaultCellStyle.Font = SubHeaderFont;
             grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = GridHeaderBackground;
             grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = TextPrimary;
-            grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(10, 12, 10, 12);
+            grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(6, 10, 6, 10);
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
             grid.ColumnHeadersHeight = 45;
 

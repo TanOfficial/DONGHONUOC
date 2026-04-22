@@ -267,6 +267,20 @@ namespace DONGHONUOC_API.Controllers
             return Ok(new { message = "Đã cập nhật ghi chú" });
         }
 
+        [HttpPut("hieu")]
+        public async Task<ActionResult> CapNhatHieu([FromBody] CapNhatHieuRequest request)
+        {
+            var lichDoc = await _db.KyDoc.FindAsync(request.MaKyDoc);
+            if (lichDoc == null) return NotFound("Kỳ đọc không tồn tại");
+            string kyStr = lichDoc.Ky.ToString("D2");
+            var docCS = await _db.DocChiSo.FirstOrDefaultAsync(d => d.MaDanhBo == request.MaDanhBo && d.Nam == lichDoc.Nam && d.Ky == kyStr);
+            if (docCS == null) return NotFound(new { message = "Không tìm thấy bản ghi" });
+
+            docCS.Hieu = request.Hieu;
+            await _db.SaveChangesAsync();
+            return Ok(new { message = "Đã cập nhật hãng đồng hồ" });
+        }
+
         [HttpPut("image")]
         public async Task<ActionResult> CapNhatHinhAnh([FromBody] CapNhatHinhAnhRequest request)
         {

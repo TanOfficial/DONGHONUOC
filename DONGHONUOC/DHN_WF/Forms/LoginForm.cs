@@ -150,5 +150,12 @@ namespace DHN_WF.Forms
                 btnLogin.Text = "Đăng Nhập";
             }
         }
+        private void BtnSettings_Click(object sender, EventArgs e)
+        {
+            using (var settings = new SettingsForm())
+            {
+                settings.ShowDialog();
+            }
+        }
     }
 }

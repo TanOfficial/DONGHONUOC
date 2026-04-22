@@ -7,12 +7,66 @@ namespace DHN_WF.Services
 {
     public class ApiService
     {
-        private static readonly HttpClient _client = new HttpClient
+        private static HttpClient _client = null!;
+        private static string _baseUrl = "http://127.0.0.1:5000/api/";
+        private static readonly string _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "api_config.json");
+
+        static ApiService()
         {
-            // Use 127.0.0.1 to avoid ipv6 resolution issues with 'localhost'
-            BaseAddress = new Uri("http://127.0.0.1:5000/api/"),
-            Timeout = TimeSpan.FromSeconds(30)
-        };
+            LoadConfig();
+            InitializeClient();
+        }
+
+        private static void InitializeClient()
+        {
+            _client = new HttpClient
+            {
+                BaseAddress = new Uri(_baseUrl),
+                Timeout = TimeSpan.FromSeconds(30)
+            };
+        }
+
+        public static string GetBaseUrl() => _baseUrl;
+
+        public static void UpdateBaseUrl(string newUrl)
+        {
+            if (string.IsNullOrWhiteSpace(newUrl)) return;
+            
+            // Ensure trailing slash
+            if (!newUrl.EndsWith("/")) newUrl += "/";
+            if (!newUrl.EndsWith("api/")) newUrl += "api/";
+
+            _baseUrl = newUrl;
+            SaveConfig();
+            InitializeClient();
+        }
+
+        private static void LoadConfig()
+        {
+            try
+            {
+                if (File.Exists(_configPath))
+                {
+                    var json = File.ReadAllText(_configPath);
+                    var config = JsonConvert.DeserializeObject<dynamic>(json);
+                    if (config?.BaseUrl != null)
+                    {
+                        _baseUrl = (string)config.BaseUrl;
+                    }
+                }
+            }
+            catch { /* Fallback to default */ }
+        }
+
+        private static void SaveConfig()
+        {
+            try
+            {
+                var json = JsonConvert.SerializeObject(new { BaseUrl = _baseUrl });
+                File.WriteAllText(_configPath, json);
+            }
+            catch { }
+        }
 
         private static StringContent Json(object obj)
             => new StringContent(JsonConvert.SerializeObject(obj), Encoding.UTF8, "application/json");

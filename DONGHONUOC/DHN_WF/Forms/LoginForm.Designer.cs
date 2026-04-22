@@ -23,6 +23,7 @@ namespace DHN_WF.Forms
             this.lblPassword = new Label();
             this.txtPassword = new TextBox();
             this.btnLogin = new Button();
+            this.btnSettings = new Button();
 
             this.panelMain.SuspendLayout();
             this.panelCard.SuspendLayout();
@@ -49,6 +50,7 @@ namespace DHN_WF.Forms
             this.panelCard.Controls.Add(this.lblPassword);
             this.panelCard.Controls.Add(this.txtPassword);
             this.panelCard.Controls.Add(this.btnLogin);
+            this.panelCard.Controls.Add(this.btnSettings);
 
             // panelLogo (blue circle)
             this.panelLogo.Size = new Size(64, 64);
@@ -126,6 +128,18 @@ namespace DHN_WF.Forms
             this.btnLogin.Cursor = Cursors.Hand;
             this.btnLogin.Click += new EventHandler(this.BtnLogin_Click);
 
+            // btnSettings (Gear icon top-right)
+            this.btnSettings.Text = "⚙";
+            this.btnSettings.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            this.btnSettings.ForeColor = Color.FromArgb(156, 163, 175);
+            this.btnSettings.FlatStyle = FlatStyle.Flat;
+            this.btnSettings.FlatAppearance.BorderSize = 0;
+            this.btnSettings.BackColor = Color.Transparent;
+            this.btnSettings.Size = new Size(32, 32);
+            this.btnSettings.Location = new Point(340, 8);
+            this.btnSettings.Cursor = Cursors.Hand;
+            this.btnSettings.Click += new EventHandler(this.BtnSettings_Click);
+
             // LoginForm
             this.Text = "Đăng Nhập – Quản Lý Đọc Số";
             this.ClientSize = new Size(520, 560);
@@ -154,5 +168,6 @@ namespace DHN_WF.Forms
         private Label lblPassword;
         private TextBox txtPassword;
         private Button btnLogin;
+        private Button btnSettings;
     }
 }

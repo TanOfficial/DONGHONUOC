@@ -16,6 +16,7 @@ import OptionDialog, { DialogOption } from '../components/common/OptionDialog';
 import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
 import { codeOptions } from '../constants/CodeConstants';
+import { MeterType, MeterTypeOptions, MeterBrandOptions } from '../constants/MeterConstants';
 
 interface Customer {
     ma_danh_bo: string;
@@ -82,6 +83,10 @@ const GhiNuocScreen = () => {
     const [noteDialogVisible, setNoteDialogVisible] = useState(false);
     const [imageOptionVisible, setImageOptionVisible] = useState(false);
     const [codeModalVisible, setCodeModalVisible] = useState(false);
+    const [typeModalVisible, setTypeModalVisible] = useState(false);
+    const [brandModalVisible, setBrandModalVisible] = useState(false);
+    const [customBrandVisible, setCustomBrandVisible] = useState(false);
+    const [selectedMeterType, setSelectedMeterType] = useState<MeterType | null>(null);
 
     const currentKH = customers[currentIndex];
 
@@ -521,6 +526,65 @@ const GhiNuocScreen = () => {
         }
     };
 
+    const handleTypeSelect = (type: MeterType) => {
+        setSelectedMeterType(type);
+        setTypeModalVisible(false);
+        setTimeout(() => {
+            setBrandModalVisible(true);
+        }, 300);
+    };
+
+    const handleBrandSelect = async (brand: string) => {
+        setBrandModalVisible(false);
+        if (brand === 'OTHER_BRAND') {
+            setTimeout(() => {
+                setCustomBrandVisible(true);
+            }, 300);
+            return;
+        }
+        setLoading(true);
+        try {
+            const success = await ApiService.capNhatHieu(currentKH.ma_danh_bo, currentKH.ma_ky_doc, brand);
+            const updated = [...customers];
+            updated[currentIndex] = { ...currentKH, hieu: brand };
+            setCustomers(updated);
+            await DatabaseHelper.capNhatHieu(currentKH.ma_danh_bo, brand);
+            if (success) {
+                Alert.alert('Thành công', `Đã cập nhật hiệu đồng hồ: ${brand}`);
+            } else {
+                Alert.alert('Thông báo', 'Đã lưu cục bộ. Cập nhật server thất bại.');
+            }
+        } catch (e) {
+            Alert.alert('Lỗi', 'Không thể cập nhật hiệu đồng hồ');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCustomBrandSave = async (brand: string) => {
+        setCustomBrandVisible(false);
+        if (!brand || !brand.trim()) return;
+        
+        setLoading(true);
+        try {
+            const finalBrand = brand.trim().toUpperCase();
+            const success = await ApiService.capNhatHieu(currentKH.ma_danh_bo, currentKH.ma_ky_doc, finalBrand);
+            const updated = [...customers];
+            updated[currentIndex] = { ...currentKH, hieu: finalBrand };
+            setCustomers(updated);
+            await DatabaseHelper.capNhatHieu(currentKH.ma_danh_bo, finalBrand);
+            if (success) {
+                Alert.alert('Thành công', `Đã cập nhật hãng mới: ${finalBrand}`);
+            } else {
+                Alert.alert('Thông báo', 'Đã lưu cục bộ. Cập nhật server thất bại.');
+            }
+        } catch (e) {
+            Alert.alert('Lỗi', 'Không thể lưu hãng mới');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleNoteSave = async (text: string) => {
         setGhiChu(text);
         setNoteDialogVisible(false);
@@ -669,6 +733,31 @@ const GhiNuocScreen = () => {
                     setCodeModalVisible(false);
                 }}
                 onCancel={() => setCodeModalVisible(false)}
+            />
+            <OptionDialog
+                visible={typeModalVisible}
+                title="Chọn loại đồng hồ"
+                options={MeterTypeOptions}
+                onSelect={handleTypeSelect}
+                onCancel={() => setTypeModalVisible(false)}
+            />
+            <OptionDialog
+                visible={brandModalVisible}
+                title="Chọn hãng đồng hồ"
+                options={[
+                    ...(selectedMeterType ? MeterBrandOptions[selectedMeterType] : []),
+                    { label: 'Khác (Thêm mới)...', value: 'OTHER_BRAND', icon: 'add-circle-outline', color: '#757575' }
+                ]}
+                onSelect={handleBrandSelect}
+                onCancel={() => setBrandModalVisible(false)}
+            />
+            <InputDialog
+                visible={customBrandVisible}
+                title="Thêm hãng mới"
+                hintText="Nhập tên hãng đồng hồ..."
+                confirmText="Xác nhận"
+                onConfirm={handleCustomBrandSave}
+                onCancel={() => setCustomBrandVisible(false)}
             />
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -859,6 +948,12 @@ const GhiNuocScreen = () => {
                                 <Text style={styles.inputLabel}>CSM</Text>
                                 <TouchableOpacity onPress={() => setImageOptionVisible(true)} style={styles.camBtn}>
                                     <Ionicons name="camera" size={24} color="#666" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => setTypeModalVisible(true)}
+                                    style={[styles.camBtn, { backgroundColor: '#E3F2FD' }]}
+                                >
+                                    <Ionicons name="pricetag-outline" size={24} color="#2196F3" />
                                 </TouchableOpacity>
                                 {capturedImage && (
                                     <View style={styles.thumbWrapper}>

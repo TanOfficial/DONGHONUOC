@@ -48,6 +48,13 @@ namespace DONGHONUOC_API.Models
         public string HinhAnh { get; set; } = "";
     }
 
+    public class CapNhatHieuRequest
+    {
+        public string MaDanhBo { get; set; } = "";
+        public int MaKyDoc { get; set; }
+        public string Hieu { get; set; } = "";
+    }
+
     public class ResetDocSoRequest
     {
         public string MaDanhBo { get; set; } = "";
