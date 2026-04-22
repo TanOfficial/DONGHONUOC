@@ -5,116 +5,184 @@ import numpy as np
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 from ultralytics import YOLO
-from PIL import Image
+from PIL import Image, ImageEnhance
 
-app = FastAPI(title="AI Water Meter Reading Server")
+app = FastAPI(title="AI Water Meter Reading Server v2")
 
-# Load model YOLOv11 đã huấn luyện
+# Load model YOLOv11 đã huấn luyện (phiên bản mới với nhận diện hãng)
 MODEL_PATH = "best.pt"
 if not os.path.exists(MODEL_PATH):
-    print(f"ERROR: Model file not found at {MODEL_PATH}")
-    # Initialize with a dummy or raise error later
+    print(f"❌ ERROR: Model file not found at {MODEL_PATH}")
 model = YOLO(MODEL_PATH)
+
+# Phân loại classes từ model
+DIGIT_CLASSES = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
+BRAND_CLASSES = {"ABB", "ACTARIS", "AICHI TOKEI", "ARAD", "BAYLAN", "DELTA", "DIEHL", "EMS"}
+NUMBER_REGION_CLASS = "number"  # Vùng chứa số (thay cho "screen" của model cũ)
+
+
+def enhance_image(img_np):
+    """
+    Tăng cường ảnh trước khi đưa vào model:
+    - Tăng độ tương phản (contrast) để làm rõ chữ số LCD
+    - Tăng độ sắc nét (sharpness)
+    """
+    # Convert to PIL for enhancement
+    pil_img = Image.fromarray(img_np)
+    
+    # Tăng contrast 1.5x
+    enhancer = ImageEnhance.Contrast(pil_img)
+    pil_img = enhancer.enhance(1.5)
+    
+    # Tăng sharpness 2x
+    enhancer = ImageEnhance.Sharpness(pil_img)
+    pil_img = enhancer.enhance(2.0)
+    
+    # Tăng brightness nhẹ 1.1x
+    enhancer = ImageEnhance.Brightness(pil_img)
+    pil_img = enhancer.enhance(1.1)
+    
+    return np.array(pil_img)
+
 
 def process_results(results):
     """
-    Xử lý kết quả từ YOLO:
-    - Tìm vùng 'screen' lớn nhất.
-    - Lấy các 'digit' và 'dot' nằm bên trong 'screen'.
-    - Sắp xếp từ trái sang phải.
+    Xử lý kết quả từ YOLO v2:
+    - Tìm vùng 'number' lớn nhất (chứa chỉ số nước).
+    - Tìm hãng đồng hồ nếu có.
+    - Lấy các 'digit' nằm bên trong vùng 'number'.
+    - Sắp xếp từ trái sang phải để ghép thành chỉ số.
     """
     boxes = results[0].boxes
     if len(boxes) == 0:
-        return "N/A"
+        return {"reading": "N/A", "brand": None, "brand_conf": None}
 
-    # Lấy danh sách các đối tượng
-    detected_objects = []
-    screen_box = None
-    max_screen_area = 0
+    # Phân loại các đối tượng phát hiện được
+    digits = []
+    number_regions = []
+    detected_brands = []
 
     for box in boxes:
         cls_id = int(box.cls[0])
         label = results[0].names[cls_id]
         conf = float(box.conf[0])
-        coords = box.xyxy[0].tolist() # [x1, y1, x2, y2]
-        
+        coords = box.xyxy[0].tolist()  # [x1, y1, x2, y2]
+
         obj = {
             "label": label,
             "conf": conf,
-            "coords": coords,
             "x_min": coords[0],
             "y_min": coords[1],
             "x_max": coords[2],
             "y_max": coords[3],
-            "area": (coords[2] - coords[0]) * (coords[3] - coords[1])
+            "width": coords[2] - coords[0],
+            "height": coords[3] - coords[1],
+            "area": (coords[2] - coords[0]) * (coords[3] - coords[1]),
+            "center_x": (coords[0] + coords[2]) / 2,
+            "center_y": (coords[1] + coords[3]) / 2,
         }
 
-        if label == "screen":
-            if obj["area"] > max_screen_area:
-                max_screen_area = obj["area"]
-                screen_box = obj
-        else:
-            detected_objects.append(obj)
+        if label == NUMBER_REGION_CLASS:
+            number_regions.append(obj)
+        elif label in DIGIT_CLASSES:
+            digits.append(obj)
+        elif label in BRAND_CLASSES:
+            detected_brands.append(obj)
 
-    # Nếu tìm thấy screen, lọc bớt các đối tượng nằm ngoài screen
-    if screen_box:
-        filtered_objects = []
-        for obj in detected_objects:
-            # Kiểm tra xem tâm của obj có nằm trong screen không
-            center_x = (obj["x_min"] + obj["x_max"]) / 2
-            center_y = (obj["y_min"] + obj["y_max"]) / 2
-            
-            if (screen_box["x_min"] <= center_x <= screen_box["x_max"] and 
-                screen_box["y_min"] <= center_y <= screen_box["y_max"]):
-                filtered_objects.append(obj)
-        detected_objects = filtered_objects
+    # --- XỬ LÝ HÃNG ĐỒNG HỒ ---
+    best_brand = None
+    if detected_brands:
+        detected_brands.sort(key=lambda x: x["conf"], reverse=True)
+        best_brand = detected_brands[0]
+        print(f"🏷️  Brand detected: {best_brand['label']} (conf={best_brand['conf']:.2f})")
 
-    # Lọc nâng cao: Chỉ giữ các chữ số có độ tin cậy > 0.4
-    all_digits = [obj for obj in detected_objects if obj["label"] in "0123456789" and obj["conf"] > 0.4]
-    
-    # Lọc theo kích thước: Chỉ giữ các số có chiều cao xấp xỉ nhau (để loại bỏ số seri nhỏ)
-    if len(all_digits) > 0:
-        heights = [(obj["y_max"] - obj["y_min"]) for obj in all_digits]
+    # --- XỬ LÝ CHỈ SỐ NƯỚC ---
+    # Tìm vùng 'number' lớn nhất
+    best_number_region = None
+    if number_regions:
+        number_regions.sort(key=lambda x: x["area"], reverse=True)
+        best_number_region = number_regions[0]
+        print(f"📐 Number region found: area={best_number_region['area']:.0f}, "
+              f"x=[{best_number_region['x_min']:.0f}-{best_number_region['x_max']:.0f}], "
+              f"y=[{best_number_region['y_min']:.0f}-{best_number_region['y_max']:.0f}]")
+
+    # Lọc digit: chỉ giữ digit nằm trong vùng 'number' (nếu có)
+    if best_number_region:
+        filtered_digits = []
+        for d in digits:
+            if (best_number_region["x_min"] <= d["center_x"] <= best_number_region["x_max"] and
+                best_number_region["y_min"] <= d["center_y"] <= best_number_region["y_max"]):
+                filtered_digits.append(d)
+            else:
+                print(f"✂️  Removed digit '{d['label']}' outside number region "
+                      f"(cx={d['center_x']:.0f}, cy={d['center_y']:.0f}, conf={d['conf']:.2f})")
+        digits = filtered_digits
+
+    # KHÔNG lọc theo conf cao quá - model mới có conf thấp hơn model cũ
+    # Chỉ bỏ những digit có conf cực thấp < 0.15
+    low_conf = [d for d in digits if d["conf"] < 0.15]
+    for d in low_conf:
+        print(f"✂️  Removed very low conf digit '{d['label']}' (conf={d['conf']:.2f})")
+    digits = [d for d in digits if d["conf"] >= 0.15]
+
+    # Lọc theo kích thước: loại bỏ các số quá nhỏ (số seri, nhãn phụ)
+    # Chỉ lọc nếu có ít nhất 3 digit để so sánh hợp lý
+    if len(digits) > 2:
+        heights = [d["height"] for d in digits]
         median_height = sorted(heights)[len(heights) // 2]
-        
-        # Chỉ giữ những số có chiều cao ít nhất 70% chiều cao trung vị
+        min_height = median_height * 0.5  # Giảm ngưỡng từ 0.6 xuống 0.5 để giữ nhiều digit hơn
+
         final_digits = []
-        for obj in all_digits:
-            obj_height = obj["y_max"] - obj["y_min"]
-            if obj_height >= (median_height * 0.7):
-                final_digits.append(obj)
+        for d in digits:
+            if d["height"] >= min_height:
+                final_digits.append(d)
             else:
-                print(f"✂️ Removed small digit '{obj['label']}' (height={obj_height:.1f}, median={median_height:.1f})")
-        
-        # Cập nhật danh sách đối tượng để chuẩn bị sắp xếp và xử lý dot
-        # (Vẫn giữ lại dot để xử lý cắt chuỗi)
-        dots = [obj for obj in detected_objects if obj["label"] == "dot"]
-        detected_objects = final_digits + dots
-    else:
-        detected_objects = [obj for obj in detected_objects if obj["label"] == "dot"]
+                print(f"✂️  Removed small digit '{d['label']}' "
+                      f"(h={d['height']:.1f}, min={min_height:.1f}, conf={d['conf']:.2f})")
+        digits = final_digits
 
-    # Sắp xếp các đối tượng từ trái sang phải
-    detected_objects.sort(key=lambda x: x["x_min"])
-
-    # Xây dựng chuỗi kết quả
-    result_str = ""
-    found_dot = False
-    for obj in detected_objects:
-        # CHỈ CHẤP NHẬN DẤU CHẤM NẾU ĐỘ TIN CẬY CAO (>0.4) VÀ NẰM SAU ÍT NHẤT 3 CHỮ SỐ
-        if obj["label"] == "dot":
-            if obj["conf"] > 0.4 and len(result_str) >= 3:
-                print(f"📍 Found VALID DOT at x={obj['x_min']} with conf={obj['conf']:.2f}")
-                found_dot = True
-                break
+    # Loại bỏ digit trùng lặp (overlap) - giữ cái có conf cao hơn
+    if len(digits) > 1:
+        digits.sort(key=lambda x: x["x_min"])
+        deduped = [digits[0]]
+        for d in digits[1:]:
+            prev = deduped[-1]
+            # Kiểm tra overlap theo trục X
+            overlap = max(0, min(prev["x_max"], d["x_max"]) - max(prev["x_min"], d["x_min"]))
+            overlap_ratio = overlap / min(prev["width"], d["width"]) if min(prev["width"], d["width"]) > 0 else 0
+            
+            if overlap_ratio > 0.5:
+                # Trùng lặp - giữ cái có conf cao hơn
+                if d["conf"] > prev["conf"]:
+                    print(f"🔄 Replaced overlapping '{prev['label']}' (conf={prev['conf']:.2f}) "
+                          f"with '{d['label']}' (conf={d['conf']:.2f})")
+                    deduped[-1] = d
+                else:
+                    print(f"🔄 Kept '{prev['label']}' (conf={prev['conf']:.2f}), "
+                          f"removed overlapping '{d['label']}' (conf={d['conf']:.2f})")
             else:
-                print(f"⚠️ Ignored weak/early DOT at x={obj['x_min']} with conf={obj['conf']:.2f}")
-                continue
-        
-        if obj["label"] in "0123456789":
-            result_str += obj["label"]
+                deduped.append(d)
+        digits = deduped
 
-    print(f"🔢 Final Result: {result_str} (Has Dot: {found_dot})")
-    return result_str if result_str else "N/A"
+    # Sắp xếp từ trái sang phải
+    digits.sort(key=lambda x: x["x_min"])
+
+    # Ghép chuỗi chỉ số
+    reading = "".join(d["label"] for d in digits)
+
+    # Log chi tiết
+    print(f"🔢 Digits found: {len(digits)}")
+    for d in digits:
+        print(f"   [{d['label']}] x={d['x_min']:.0f}-{d['x_max']:.0f} "
+              f"conf={d['conf']:.2f} h={d['height']:.0f} w={d['width']:.0f}")
+    print(f"📊 Final Reading: {reading if reading else 'N/A'}")
+
+    return {
+        "reading": reading if reading else "N/A",
+        "brand": best_brand["label"] if best_brand else None,
+        "brand_conf": round(best_brand["conf"], 2) if best_brand else None,
+    }
+
 
 @app.post("/api/doc-so-moi")
 async def doc_so_moi(file: UploadFile = File(...)):
@@ -124,31 +192,78 @@ async def doc_so_moi(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(contents)).convert("RGB")
         img_np = np.array(image)
 
-        # Dự đoán bài toán Object Detection
-        # Sử dụng conf thấp (0.15) để bắt được mọi thứ, sau đó lọc lại trong process_results
-        results = model.predict(img_np, conf=0.15)
+        print(f"\n{'='*60}")
+        print(f"📸 Received image: {file.filename} ({img_np.shape})")
 
-        # LƯU ẢNH DEBUG ĐỂ KIỂM TRA
-        res_plotted = results[0].plot()
-        cv2.imwrite("debug_ai.jpg", cv2.cvtColor(res_plotted, cv2.COLOR_RGB2BGR))
-        print("📸 Saved debug image to debug_ai.jpg")
+        # Tăng cường ảnh trước khi đưa vào model
+        enhanced = enhance_image(img_np)
 
-        # Xử lý lấy chỉ số
-        result_value = process_results(results)
+        # Chạy predict trên CẢ ảnh gốc và ảnh tăng cường, lấy kết quả tốt hơn
+        results_original = model.predict(img_np, conf=0.10, iou=0.4)
+        results_enhanced = model.predict(enhanced, conf=0.10, iou=0.4)
 
-        return {
+        # Chọn kết quả nào có nhiều detection hơn
+        n_orig = len(results_original[0].boxes)
+        n_enh = len(results_enhanced[0].boxes)
+        print(f"🔍 Original detections: {n_orig}, Enhanced detections: {n_enh}")
+
+        if n_enh > n_orig:
+            results = results_enhanced
+            print("✨ Using ENHANCED image results")
+            res_plotted = results[0].plot()
+            cv2.imwrite("debug_ai.jpg", cv2.cvtColor(res_plotted, cv2.COLOR_RGB2BGR))
+            cv2.imwrite("debug_ai_enhanced.jpg", cv2.cvtColor(enhanced, cv2.COLOR_RGB2BGR))
+        else:
+            results = results_original
+            print("📷 Using ORIGINAL image results")
+            res_plotted = results[0].plot()
+            cv2.imwrite("debug_ai.jpg", cv2.cvtColor(res_plotted, cv2.COLOR_RGB2BGR))
+
+        print("💾 Saved debug images")
+
+        # Xử lý kết quả
+        parsed = process_results(results)
+
+        response = {
             "success": True,
-            "result": result_value,
-            "message": "Đã nhận được ảnh và đang xử lý..."
+            "result": parsed["reading"],
+            "brand": parsed.get("brand"),
+            "brand_conf": parsed.get("brand_conf"),
+            "message": "Đã xử lý ảnh thành công"
         }
+
+        print(f"✅ Response: reading={parsed['reading']}, brand={parsed.get('brand')}")
+        print(f"{'='*60}\n")
+
+        return response
+
     except Exception as e:
         print(f"❌ Server Error: {e}")
+        import traceback
+        traceback.print_exc()
         return JSONResponse(
             status_code=500,
             content={"success": False, "message": str(e)}
         )
 
+
+@app.get("/health")
+async def health():
+    """API kiểm tra trạng thái server"""
+    return {
+        "status": "running",
+        "model": MODEL_PATH,
+        "classes": model.names,
+        "brand_classes": list(BRAND_CLASSES),
+        "digit_classes": list(DIGIT_CLASSES),
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
-    # Chạy trên port 8001
+    print("🚀 Starting AI Water Meter Server v2...")
+    print(f"📦 Model: {MODEL_PATH}")
+    print(f"🏷️  Supported brands: {', '.join(sorted(BRAND_CLASSES))}")
+    print(f"🔢 Digit classes: 0-9")
+    print(f"📐 Region class: {NUMBER_REGION_CLASS}")
     uvicorn.run(app, host="0.0.0.0", port=8001)
