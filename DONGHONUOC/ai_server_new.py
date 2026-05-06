@@ -16,9 +16,9 @@ if not os.path.exists(MODEL_PATH):
 model = YOLO(MODEL_PATH)
 
 # Phân loại classes từ model
-DIGIT_CLASSES = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
+DIGIT_CLASSES = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "dot"}
 BRAND_CLASSES = {"ABB", "ACTARIS", "AICHI TOKEI", "ARAD", "BAYLAN", "DELTA", "DIEHL", "EMS"}
-NUMBER_REGION_CLASS = "number"
+NUMBER_REGION_CLASS = "screen"
 
 
 def create_image_variants(img_np):
@@ -142,13 +142,24 @@ def process_results(results):
 
     # Lọc kích thước (chỉ khi >= 4 digit)
     if len(digits) >= 4:
-        heights = [d["height"] for d in digits]
-        median_h = sorted(heights)[len(heights) // 2]
-        digits = [d for d in digits if d["height"] >= median_h * 0.45]
+        # Lấy median height của các số (bỏ qua dot để tính median)
+        number_heights = [d["height"] for d in digits if d["label"] != "dot"]
+        if number_heights:
+            median_h = sorted(number_heights)[len(number_heights) // 2]
+            # Giữ lại dot, hoặc các số có height đủ lớn
+            digits = [d for d in digits if d["label"] == "dot" or d["height"] >= median_h * 0.45]
 
     # Sắp xếp trái → phải
     digits.sort(key=lambda x: x["x_min"])
-    reading = "".join(d["label"] for d in digits)
+    
+    reading_chars = []
+    for d in digits:
+        if d["label"] == "dot":
+            reading_chars.append(".")
+        else:
+            reading_chars.append(d["label"])
+            
+    reading = "".join(reading_chars)
 
     return {
         "reading": reading if reading else "N/A",
