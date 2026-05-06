@@ -22,8 +22,8 @@ const OptionDialog: React.FC<OptionDialogProps> = ({
 }) => {
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-            <View style={styles.overlay}>
-                <View style={styles.card}>
+            <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onCancel}>
+                <TouchableOpacity activeOpacity={1} style={styles.card}>
                     <Text style={styles.title}>{title}</Text>
                     <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                         {options.map((option, idx) => (
@@ -42,8 +42,8 @@ const OptionDialog: React.FC<OptionDialogProps> = ({
                     <TouchableOpacity style={styles.closeBtn} onPress={onCancel}>
                         <Text style={styles.closeTxt}>Đóng</Text>
                     </TouchableOpacity>
-                </View>
-            </View>
+                </TouchableOpacity>
+            </TouchableOpacity>
         </Modal>
     );
 };

@@ -22,9 +22,9 @@ const InputDialog: React.FC<InputDialogProps> = ({
     }, [visible, initialValue]);
 
     return (
-        <Modal visible={visible} transparent animationType="fade">
-            <View style={styles.overlay}>
-                <View style={styles.card}>
+        <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+            <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onCancel}>
+                <TouchableOpacity activeOpacity={1} style={styles.card}>
                     <Text style={styles.title}>{title}</Text>
                     <TextInput
                         style={styles.input}
@@ -46,8 +46,8 @@ const InputDialog: React.FC<InputDialogProps> = ({
                             <Text style={styles.confirmTxt}>{confirmText}</Text>
                         </TouchableOpacity>
                     </View>
-                </View>
-            </View>
+                </TouchableOpacity>
+            </TouchableOpacity>
         </Modal>
     );
 };

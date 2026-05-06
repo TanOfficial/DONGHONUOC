@@ -94,9 +94,9 @@ const LoginScreen = () => {
     return (
         <SafeAreaView style={styles.container}>
             {/* Settings Modal */}
-            <Modal visible={showSettings} transparent animationType="fade">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalCard}>
+            <Modal visible={showSettings} transparent animationType="fade" onRequestClose={() => setShowSettings(false)}>
+                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowSettings(false)}>
+                    <TouchableOpacity activeOpacity={1} style={styles.modalCard}>
                         <Text style={styles.modalTitle}>⚙️ Cấu hình Server</Text>
                         <Text style={styles.modalSubtitle}>Nhập địa chỉ IP của server API</Text>
                         <TextInput
@@ -116,8 +116,8 @@ const LoginScreen = () => {
                                 <Text style={styles.modalBtnSaveText}>💾 Lưu</Text>
                             </TouchableOpacity>
                         </View>
-                    </View>
-                </View>
+                    </TouchableOpacity>
+                </TouchableOpacity>
             </Modal>
 
             <KeyboardAvoidingView

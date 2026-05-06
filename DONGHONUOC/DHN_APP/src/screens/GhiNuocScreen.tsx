@@ -668,8 +668,8 @@ const GhiNuocScreen = () => {
                 onCancel={() => setImageOptionVisible(false)}
             />
             <Modal visible={infoModalVisible} transparent animationType="fade" onRequestClose={() => setInfoModalVisible(false)}>
-                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center' }]}>
-                    <View style={styles.infoPopupCard}>
+                <TouchableOpacity style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center' }]} activeOpacity={1} onPress={() => setInfoModalVisible(false)}>
+                    <TouchableOpacity activeOpacity={1} style={styles.infoPopupCard}>
                         <Text style={styles.infoPopupTitle}>Thông Tin</Text>
                         <ScrollView style={{ maxHeight: 450 }} contentContainerStyle={{ paddingBottom: 20 }}>
                             <InfoItem label="Kỳ" value={`${selectedHistory?.ky || '01'}/${selectedHistory?.nam || '2026'}`} />
@@ -721,8 +721,8 @@ const GhiNuocScreen = () => {
                         <TouchableOpacity style={styles.infoPopupClose} onPress={() => setInfoModalVisible(false)}>
                             <Text style={styles.infoPopupCloseTxt}>Đóng</Text>
                         </TouchableOpacity>
-                    </View>
-                </View>
+                    </TouchableOpacity>
+                </TouchableOpacity>
             </Modal>
             <OptionDialog
                 visible={codeModalVisible}

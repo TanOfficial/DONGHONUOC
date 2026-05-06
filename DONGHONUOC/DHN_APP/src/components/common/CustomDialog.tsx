@@ -20,9 +20,9 @@ const CustomDialog: React.FC<CustomDialogProps> = ({
     confirmText, cancelText, onConfirm, onCancel, isError = false
 }) => {
     return (
-        <Modal visible={visible} transparent animationType="fade">
-            <View style={styles.overlay}>
-                <View style={styles.card}>
+        <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+            <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onCancel}>
+                <TouchableOpacity activeOpacity={1} style={styles.card}>
                     {icon && (
                         <View style={[styles.iconWrapper, { backgroundColor: `${iconColor}15` }]}>
                             <Ionicons name={icon} size={40} color={iconColor} />
@@ -46,8 +46,8 @@ const CustomDialog: React.FC<CustomDialogProps> = ({
                             </TouchableOpacity>
                         )}
                     </View>
-                </View>
-            </View>
+                </TouchableOpacity>
+            </TouchableOpacity>
         </Modal>
     );
 };

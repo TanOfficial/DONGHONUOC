@@ -536,8 +536,8 @@ const DanhSachKHScreen = () => {
             />
 
             <Modal visible={downloadDialogVisible} transparent animationType="fade" onRequestClose={() => setDownloadDialogVisible(false)}>
-                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center' }]}>
-                    <View style={[styles.modalCard, { borderRadius: 16, marginHorizontal: 20, elevation: 20, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '90%' }]}>
+                <TouchableOpacity style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center' }]} activeOpacity={1} onPress={() => setDownloadDialogVisible(false)}>
+                    <TouchableOpacity activeOpacity={1} style={[styles.modalCard, { borderRadius: 16, marginHorizontal: 20, elevation: 20, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '90%' }]}>
                         <Text style={styles.modalTitle}>Tải Dữ Liệu Đọc Số</Text>
 
                         <View style={styles.dlForm}>
@@ -648,13 +648,13 @@ const DanhSachKHScreen = () => {
                         <TouchableOpacity style={{ alignSelf: 'center', marginTop: 20, padding: 10 }} onPress={() => setDownloadDialogVisible(false)}>
                             <Text style={{ color: '#F44336', fontWeight: 'bold', fontSize: 16 }}>QUAY LẠI</Text>
                         </TouchableOpacity>
-                    </View>
-                </View>
+                    </TouchableOpacity>
+                </TouchableOpacity>
             </Modal>
 
-            <Modal visible={filterSortVisible} transparent animationType="slide">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalCard}>
+            <Modal visible={filterSortVisible} transparent animationType="slide" onRequestClose={() => setFilterSortVisible(false)}>
+                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setFilterSortVisible(false)}>
+                    <TouchableOpacity activeOpacity={1} style={styles.modalCard}>
                         <Text style={styles.modalTitle}>Lọc & Sắp xếp</Text>
 
                         <Text style={styles.inputLabel}>Lọc theo loại</Text>
@@ -685,8 +685,8 @@ const DanhSachKHScreen = () => {
                                 <Text style={styles.applyBtnTxt}>Áp dụng</Text>
                             </TouchableOpacity>
                         </View>
-                    </View>
-                </View>
+                    </TouchableOpacity>
+                </TouchableOpacity>
             </Modal>
 
             {/* Top bar */}
@@ -724,17 +724,17 @@ const DanhSachKHScreen = () => {
             </View>
 
             {/* IP Modal matches InputDialog style but for IP */}
-            <Modal visible={ipModalVisible} transparent animationType="fade">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalCard}>
+            <Modal visible={ipModalVisible} transparent animationType="fade" onRequestClose={() => setIpModalVisible(false)}>
+                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setIpModalVisible(false)}>
+                    <TouchableOpacity activeOpacity={1} style={styles.modalCard}>
                         <Text style={styles.modalTitle}>Cấu hình Máy chủ</Text>
                         <TextInput style={styles.modalInput} value={ipInput} onChangeText={setIpInput} placeholder="10.0.2.2" />
                         <View style={styles.modalBtns}>
                             <TouchableOpacity onPress={() => setIpModalVisible(false)}><Text style={{ color: '#666', padding: 10 }}>Hủy</Text></TouchableOpacity>
                             <TouchableOpacity onPress={async () => { await ApiService.setBaseUrl(ipInput); setIpModalVisible(false); init(); }}><Text style={{ color: '#2196F3', fontWeight: 'bold', padding: 10 }}>CẬP NHẬT</Text></TouchableOpacity>
                         </View>
-                    </View>
-                </View>
+                    </TouchableOpacity>
+                </TouchableOpacity>
             </Modal>
 
             {/* Filter Toggle Row matches Flutter exactly */}
