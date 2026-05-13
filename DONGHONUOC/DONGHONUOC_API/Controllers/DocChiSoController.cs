@@ -253,6 +253,50 @@ namespace DONGHONUOC_API.Controllers
             return Ok(new { message = "Đã cập nhật code" });
         }
 
+        // ====== TỰ ĐỘNG BẬT AI SERVER TỪ APP ======
+        [HttpPost("ai/start")]
+        public IActionResult StartAiServer()
+        {
+            try
+            {
+                // Kiểm tra xem port 8001 đã có tiến trình nào lắng nghe chưa
+                bool isRunning = false;
+                var properties = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
+                var endPoints = properties.GetActiveTcpListeners();
+                foreach (var ep in endPoints)
+                {
+                    if (ep.Port == 8001)
+                    {
+                        isRunning = true;
+                        break;
+                    }
+                }
+
+                if (isRunning)
+                {
+                    return Ok(new { message = "AI Server đã đang chạy." });
+                }
+
+                Console.WriteLine("🚀 Nhận yêu cầu từ App: Đang tự động bật AI Server (ai_server_roboflow.py)...");
+
+                var process = new System.Diagnostics.Process();
+                process.StartInfo.FileName = "python";
+                process.StartInfo.Arguments = "ai_server_roboflow.py";
+                // Lấy thư mục gốc chứa file python (cùng cấp với DONGHONUOC_API)
+                process.StartInfo.WorkingDirectory = Directory.GetParent(Directory.GetCurrentDirectory()).FullName; 
+                process.StartInfo.UseShellExecute = true; // Cho phép mở cửa sổ CMD đen để xem log
+                process.StartInfo.CreateNoWindow = false;
+                
+                process.Start();
+                
+                return Ok(new { message = "Đã gửi lệnh bật AI Server! Đợi khoảng 3 giây..." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Không thể bật AI Server: {ex.Message}" });
+            }
+        }
+
         [HttpPut("note")]
         public async Task<ActionResult> CapNhatGhiChu([FromBody] CapNhatGhiChuRequest request)
         {

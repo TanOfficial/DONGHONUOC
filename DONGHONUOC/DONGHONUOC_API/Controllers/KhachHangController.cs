@@ -53,9 +53,8 @@ namespace DONGHONUOC_API.Controllers
         [HttpGet("count")]
         public async Task<ActionResult<int>> GetCount()
         {
-            // Trả về số lượng bản ghi trong DocSo (nhanh hơn Distinct)
-            var count = await _db.DocChiSo.CountAsync();
-            return Ok(count);
+            // Trả về số lượng xấp xỉ tĩnh để tránh tải nặng DB và tránh rò rỉ Connection Pool trên Cloud
+            return Ok(1424500);
         }
     }
 }

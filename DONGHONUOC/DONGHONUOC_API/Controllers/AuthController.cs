@@ -43,6 +43,14 @@ namespace DONGHONUOC_API.Controllers
                 {
                     Console.WriteLine("[Login] Verifying with BCrypt...");
                     isValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+                    // Nếu hash cũ dùng cost factor cao (12), tự động re-hash xuống 4 để login nhanh hơn
+                    if (isValid && !user.PasswordHash.StartsWith("$2b$04$"))
+                    {
+                        Console.WriteLine("[Login] Re-hashing with lower cost factor for speed...");
+                        user.PasswordHash = HashPassword(request.Password);
+                        await _db.SaveChangesAsync();
+                        Console.WriteLine("[Login] Re-hash complete.");
+                    }
                 }
                 else
                 {
@@ -77,7 +85,7 @@ namespace DONGHONUOC_API.Controllers
                     Username = user.Username,
                     HoTen = user.HoTen,
                     VaiTro = user.VaiTro,
-                    Avatar = user.Avatar
+                    Avatar = null // 🔴 KHÔNG GỬI AVATAR TRONG LOGIN ĐỂ TRÁNH CRASH APP
                 });
             }
             catch (Exception ex)
@@ -87,6 +95,50 @@ namespace DONGHONUOC_API.Controllers
                 Console.WriteLine(ex.StackTrace);
                 return StatusCode(500, new { Message = "Lỗi hệ thống khi xử lý đăng nhập", Detail = ex.Message });
             }
+        }
+
+        /// <summary>
+        /// [ADMIN TOOL] Re-hash password với BCrypt factor thấp hơn để tăng tốc login trên hosting hạn chế CPU.
+        /// Gọi 1 lần duy nhất cho mỗi tài khoản. Sau khi re-hash xong, login sẽ nhanh ngay lập tức.
+        /// </summary>
+        [HttpPost("rehash-fast")]
+        public async Task<ActionResult<object>> RehashFast([FromBody] LoginRequest request)
+        {
+            Console.WriteLine($"[RehashFast] Request for user: {request.Username}");
+            var user = await _db.NguoiDung.FirstOrDefaultAsync(u => u.Username == request.Username);
+            if (user == null)
+                return NotFound(new { Success = false, Message = "Không tìm thấy tài khoản!" });
+
+            bool verified = false;
+
+            // Thử verify BCrypt
+            if (user.PasswordHash != null && user.PasswordHash.StartsWith("$2") && user.PasswordHash.Length > 50)
+            {
+                try { verified = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash); }
+                catch { verified = false; }
+            }
+
+            // Thử verify SHA256 legacy nếu BCrypt fail
+            if (!verified)
+            {
+                var sha256Hash = HashPasswordLegacy(request.Password);
+                verified = user.PasswordHash == sha256Hash;
+            }
+
+            if (!verified)
+                return Ok(new { Success = false, Message = "Sai mật khẩu! Không thể re-hash." });
+
+            // Kiểm tra xem đã là factor 4 chưa
+            if (user.PasswordHash != null && user.PasswordHash.StartsWith("$2b$04$"))
+                return Ok(new { Success = true, Message = "Tài khoản đã dùng factor 4 rồi, không cần re-hash!" });
+
+            // Re-hash với factor 4
+            Console.WriteLine($"[RehashFast] Re-hashing {request.Username} với factor 4...");
+            user.PasswordHash = HashPassword(request.Password);
+            await _db.SaveChangesAsync();
+            Console.WriteLine($"[RehashFast] ✅ Done! {request.Username} đã được re-hash thành công.");
+
+            return Ok(new { Success = true, Message = $"✅ Re-hash thành công! Tài khoản '{request.Username}' giờ sẽ login cực nhanh." });
         }
 
         /// <summary>
@@ -175,7 +227,7 @@ namespace DONGHONUOC_API.Controllers
 
         private static string HashPassword(string password)
         {
-            return BCrypt.Net.BCrypt.HashPassword(password, 12);
+            return BCrypt.Net.BCrypt.HashPassword(password, 4);
         }
 
         private static string HashPasswordLegacy(string password)

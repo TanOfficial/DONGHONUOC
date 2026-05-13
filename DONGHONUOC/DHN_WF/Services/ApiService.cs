@@ -8,7 +8,7 @@ namespace DHN_WF.Services
     public class ApiService
     {
         private static HttpClient _client = null!;
-        private static string _baseUrl = "http://127.0.0.1:5000/api/";
+        private static string _baseUrl = "http://shunlyowo-001-site1.jtempurl.com/api/";
         private static readonly string _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "api_config.json");
 
         static ApiService()
@@ -24,6 +24,9 @@ namespace DHN_WF.Services
                 BaseAddress = new Uri(_baseUrl),
                 Timeout = TimeSpan.FromSeconds(30)
             };
+            // Tự động vượt qua mật khẩu bảo vệ (Password Protection) của SmarterASP
+            var authBytes = Encoding.ASCII.GetBytes("11309085:60-dayfreetrial");
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
         }
 
         public static string GetBaseUrl() => _baseUrl;
@@ -45,6 +48,7 @@ namespace DHN_WF.Services
         {
             try
             {
+                bool needSave = false;
                 if (File.Exists(_configPath))
                 {
                     var json = File.ReadAllText(_configPath);
@@ -53,6 +57,18 @@ namespace DHN_WF.Services
                     {
                         _baseUrl = (string)config.BaseUrl;
                     }
+                }
+
+                // Tự động nâng cấp cấu hình cũ sang Cloud URL mới
+                if (string.IsNullOrEmpty(_baseUrl) || !_baseUrl.Contains("shunlyowo-001-site1.jtempurl.com"))
+                {
+                    _baseUrl = "http://shunlyowo-001-site1.jtempurl.com/api/";
+                    needSave = true;
+                }
+
+                if (needSave)
+                {
+                    SaveConfig();
                 }
             }
             catch { /* Fallback to default */ }

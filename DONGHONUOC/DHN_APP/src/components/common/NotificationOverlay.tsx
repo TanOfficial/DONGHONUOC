@@ -79,7 +79,7 @@ const NotificationOverlay: React.FC<NotificationProps> = ({
         });
     };
 
-    if (!visible && translateY._value === -200) return null;
+    if (!visible && (translateY as any)._value === -200) return null;
 
     const getStatusConfig = () => {
         switch (type) {

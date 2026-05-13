@@ -2,16 +2,19 @@ console.log('🚀 API SERVICE LOADED');
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Cấu hình tự động vượt mật khẩu bảo mật (Password Protection) của SmarterASP.net
+axios.defaults.headers.common['Authorization'] = 'Basic MTEzMDkwODU6NjAtZGF5ZnJlZXRyaWFs';
+
 // In a real app, this would be in a .env file
 // 10.0.2.2 = address emulator uses to reach host machine's localhost
 // Using detected local IP for physical device (iPhone/Android) connectivity
 const DEFAULT_IP = '192.168.1.144';
 const PORT = '5000';
-const TIMEOUT_MS = 10000; // 10 seconds
+const TIMEOUT_MS = 30000; // 30 seconds - cần thiết cho cloud server cold start
 
 class ApiService {
     private static instance: ApiService;
-    private baseUrl: string = `http://${DEFAULT_IP}:${PORT}/api`;
+    private baseUrl: string = "http://shunlyowo-001-site1.jtempurl.com/api";
     private currentUsername: string | null = null;
 
     private constructor() {
@@ -26,25 +29,31 @@ class ApiService {
     }
 
     private async loadBaseUrl() {
-        const savedUrlOrIp = await AsyncStorage.getItem('server_ip');
-        if (savedUrlOrIp) {
-            if (savedUrlOrIp.startsWith('http')) {
-                this.baseUrl = savedUrlOrIp.endsWith('/') ? `${savedUrlOrIp}api` : `${savedUrlOrIp}/api`;
-            } else {
-                this.baseUrl = `http://${savedUrlOrIp}:${PORT}/api`;
-            }
+        let savedUrlOrIp = await AsyncStorage.getItem('server_ip');
+        
+        if (!savedUrlOrIp || !savedUrlOrIp.includes('shunlyowo-001-site1.jtempurl.com')) {
+            savedUrlOrIp = 'http://shunlyowo-001-site1.jtempurl.com';
+            await AsyncStorage.setItem('server_ip', savedUrlOrIp);
         }
+
+        this.updateBaseUrl(savedUrlOrIp);
         console.log('🌐 API BaseURL:', this.baseUrl);
     }
 
     public async setBaseUrl(value: string) {
         if (value) {
-            if (value.startsWith('http')) {
-                this.baseUrl = value.endsWith('/') ? `${value}api` : `${value}/api`;
-            } else {
-                this.baseUrl = `http://${value}:${PORT}/api`;
-            }
+            this.updateBaseUrl(value);
             await AsyncStorage.setItem('server_ip', value);
+        }
+    }
+
+    private updateBaseUrl(value: string) {
+        if (value.startsWith('http')) {
+            this.baseUrl = value.endsWith('/') ? `${value}api` : `${value}/api`;
+        } else if (value.includes('.com') || value.includes('.net') || value.includes('.vn')) {
+            this.baseUrl = `http://${value}/api`;
+        } else {
+            this.baseUrl = `http://${value}:${PORT}/api`;
         }
     }
 
@@ -386,10 +395,17 @@ class ApiService {
             type: 'image/jpeg',
         } as any);
 
-        // We use the same IP as DEFAULT_IP, but port 8000 for the Python AI server.
-        // Or you can extract the IP from this.baseUrl if it's dynamic.
-        const ipMatch = this.baseUrl.match(/\/\/([0-9\.]+):/);
-        const serverIp = ipMatch ? ipMatch[1] : DEFAULT_IP;
+        // Tự động nhận diện IP máy chủ AI: Trùng với tên miền hoặc IP của C# API (vì cùng chạy trên một máy tính)
+        let serverIp = '10.0.2.2';
+        const ipMatch = this.baseUrl.match(/\/\/([a-zA-Z0-9\.\-]+)/);
+        if (ipMatch) {
+            serverIp = ipMatch[1];
+            // Nếu chạy trên máy ảo Android và API hướng về localhost hoặc Cloud, chuyển thành 10.0.2.2 (vì AI Server chạy dưới Local)
+            if (serverIp === 'localhost' || serverIp === '127.0.0.1' || serverIp.includes('jtempurl.com')) {
+                serverIp = '10.0.2.2';
+            }
+        }
+
         
         try {
             const response = await fetch(`http://${serverIp}:8001/api/doc-so-moi`, {
@@ -398,14 +414,34 @@ class ApiService {
             });
             const responseJson = await response.json();
             
-            if (responseJson.success) {
-                return { success: true, result: responseJson.result };
+            if (responseJson.success || responseJson.status === 'success') {
+                return { success: true, result: responseJson.result || responseJson.reading };
             } else {
                 return { success: false, message: responseJson.message };
             }
         } catch (error) {
-            console.error('AI Server Error:', error);
-            return { success: false, message: 'Không thể kết nối với Server AI (Kiểm tra lại IP hoặc WiFi)' };
+            console.warn('AI Server không phản hồi, đang thử yêu cầu Main API tự động bật AI Server...');
+            try {
+                // Thử gọi lệnh tự động bật AI Server từ Main API (C#)
+                await axios.post(`${this.baseUrl}/docchiso/ai/start`);
+                
+                // Đợi 4 giây cho AI Server (Python) khởi động lên
+                await new Promise(resolve => setTimeout(resolve, 4000));
+                
+                // Thử gửi ảnh lần 2
+                const retryResponse = await fetch(`http://${serverIp}:8001/api/doc-so-moi`, {
+                    method: 'POST',
+                    body: formData,
+                });
+                const retryJson = await retryResponse.json();
+                if (retryJson.success || retryJson.status === 'success') {
+                    return { success: true, result: retryJson.result || retryJson.reading };
+                }
+            } catch (retryError) {
+                console.error('Lỗi khi bật AI tự động:', retryError);
+            }
+            
+            return { success: false, message: 'Server AI chưa được bật hoặc đang khởi động. Vui lòng thử lại sau vài giây!' };
         }
     }
 

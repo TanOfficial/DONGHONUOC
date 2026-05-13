@@ -12,16 +12,26 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
     },
     "android": {
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.shunly.ReactNative"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,7 +44,20 @@
           "photosPermission": "Ứng dụng cần quyền truy cập thư viện ảnh để đính kèm vào kết quả đọc số.",
           "cameraPermission": "Ứng dụng cần quyền truy cập camera để chụp ảnh đồng hồ nước."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "78eeac18-e19d-43be-89b2-91eb747954d6"
+      }
+    }
   }
 }

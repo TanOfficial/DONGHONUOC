@@ -39,17 +39,24 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Swagger luôn bật (dùng cho dev)
-app.UseSwagger();
+app.UseStaticFiles();
+app.UseSwagger(c =>
+{
+    c.RouteTemplate = "api-docs/{documentName}/swagger";
+});
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Đồng Hồ Nước API v1");
+    c.SwaggerEndpoint("/api-docs/v1/swagger", "Đồng Hồ Nước API v1");
 });
 
 app.UseCors("AllowAll");
 app.MapControllers();
 
-// Lắng nghe trên tất cả các IP (quan trọng cho mobile kết nối qua WiFi)
-app.Urls.Add("http://0.0.0.0:5000");
+// Lắng nghe trên tất cả các IP (chỉ chạy ở Local Dev, chạy trên IIS Cloud sẽ tự động map port)
+if (app.Environment.IsDevelopment())
+{
+    app.Urls.Add("http://0.0.0.0:5000");
+}
 
 Console.WriteLine("===========================================");
 Console.WriteLine("  🚀 ĐỒNG HỒ NƯỚC API đang chạy!");
