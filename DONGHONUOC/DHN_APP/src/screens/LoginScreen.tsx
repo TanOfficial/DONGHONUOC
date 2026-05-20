@@ -34,12 +34,19 @@ const LoginScreen = () => {
 
     useEffect(() => {
         AsyncStorage.getItem('server_ip').then(ip => {
-            if (ip) setServerIp(ip);
+            if (ip) {
+                setServerIp(ip);
+                // Tự động kích hoạt AI Server khi vừa khởi động ứng dụng
+                setTimeout(() => {
+                    ApiService.startAiServer();
+                }, 1500);
+            }
         });
         AsyncStorage.getItem('ai_server_ip').then(ip => {
             if (ip) setAiServerIp(ip);
         });
     }, []);
+
 
     const handleOpenSettings = async () => {
         const ip = await AsyncStorage.getItem('server_ip') || serverIp;

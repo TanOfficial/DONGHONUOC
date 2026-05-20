@@ -238,6 +238,20 @@ class ApiService {
         }
     }
 
+    public async layHinhAnh(maDanhBo: string, maKyDoc: number) {
+        try {
+            const url = `${this.baseUrl}/docchiso/hinhanh?maDanhBo=${encodeURIComponent(maDanhBo)}&maKyDoc=${maKyDoc}`;
+            const response = await axios.get(url);
+            if (response.status === 200 && response.data?.hinhAnh) {
+                return response.data.hinhAnh;
+            }
+            return null;
+        } catch (e) {
+            console.warn('⚠️ Lỗi tải ảnh động:', e);
+            return null;
+        }
+    }
+
     public async timKiemToAnBo(q: string, pageNumber = 1, pageSize = 50) {
         try {
             const url = `${this.baseUrl}/docchiso/search?q=${encodeURIComponent(q)}&pageNumber=${pageNumber}&pageSize=${pageSize}`;
@@ -458,6 +472,19 @@ class ApiService {
             return { success: false, message: 'Không thể kết nối tới AI Server.' };
         }
     }
+
+    public async startAiServer() {
+        try {
+            console.log('🚀 Đang gửi yêu cầu khởi động AI Server...');
+            const response = await axios.post(`${this.baseUrl}/docchiso/ai/start`, {}, { timeout: 5000 });
+            console.log('✅ AI Server Status:', response.data?.message);
+            return true;
+        } catch (error: any) {
+            console.warn('⚠️ Lỗi tự động bật AI Server:', error.message || error);
+            return false;
+        }
+    }
+
 
     private convertDocSoItem(item: any) {
         return {

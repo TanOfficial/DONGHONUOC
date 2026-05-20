@@ -106,7 +106,21 @@ const GhiNuocScreen = () => {
         setCsMoi(initialCsMoi);
         setGhiChu(currentKH.ghi_chu ?? '');
         setSelectedCode(currentKH.code ?? '40');
-        setCapturedImage(currentKH.hinh_anh ?? null);
+        
+        // Tải ảnh động bất đồng bộ tránh nghẽn luồng
+        if (currentKH.hinh_anh) {
+            setCapturedImage(currentKH.hinh_anh);
+        } else if (currentKH.trang_thai === 1) {
+            setCapturedImage(null);
+            ApiService.layHinhAnh(currentKH.ma_danh_bo, currentKH.ma_ky_doc).then(img => {
+                if (img) {
+                    setCapturedImage(img);
+                    currentKH.hinh_anh = img; // Lưu tạm vào đối tượng để không phải tải lại lần sau
+                }
+            }).catch(e => console.warn("⚠️ Không thể tải ảnh động:", e));
+        } else {
+            setCapturedImage(null);
+        }
 
         // Use cache for history if available
         if (historyCache[currentKH.ma_danh_bo]) {

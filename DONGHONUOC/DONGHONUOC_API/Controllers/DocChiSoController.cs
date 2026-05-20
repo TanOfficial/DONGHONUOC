@@ -95,7 +95,7 @@ namespace DONGHONUOC_API.Controllers
                 TongCong = d.TongTien ?? 0,
                 GhiChu = d.GhiChu,
                 GhiChuKH = d.GhiChuKH,
-                HinhAnh = d.HinhAnh,
+                HinhAnh = null, // Tách HinhAnh ra khỏi danh sách để tối ưu dung lượng tải
                 NgayDoc = d.NgayDoc,
                 TuNgay = d.TuNgay,
                 DenNgay = d.DenNgay
@@ -176,6 +176,23 @@ namespace DONGHONUOC_API.Controllers
             }).ToList();
 
             return result;
+        }
+
+        // ====== TẢI HÌNH ẢNH DÂN DỤNG THEO YÊU CẦU ======
+        [HttpGet("hinhanh")]
+        public async Task<ActionResult> GetHinhAnh([FromQuery] string maDanhBo, [FromQuery] int maKyDoc)
+        {
+            var lichDoc = await _db.KyDoc.FindAsync(maKyDoc);
+            if (lichDoc == null) return NotFound("Kỳ đọc không tồn tại");
+            string kyStr = lichDoc.Ky.ToString("D2");
+
+            var docCS = await _db.DocChiSo.AsNoTracking()
+                .Where(d => d.MaDanhBo == maDanhBo && d.Nam == lichDoc.Nam && d.Ky == kyStr)
+                .Select(d => new { d.HinhAnh })
+                .FirstOrDefaultAsync();
+
+            if (docCS == null) return NotFound("Không tìm thấy bản ghi");
+            return Ok(new { hinhAnh = docCS.HinhAnh });
         }
 
         [HttpPost("ghi")]
@@ -293,7 +310,9 @@ namespace DONGHONUOC_API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = $"Không thể bật AI Server: {ex.Message}" });
+                // Thay vì ném lỗi 500 gây crash app, trả về 200 OK kèm thông điệp hướng dẫn trên Cloud
+                Console.WriteLine($"⚠️ Không thể khởi động AI Server cục bộ: {ex.Message}");
+                return Ok(new { message = "Đang chạy trên môi trường Cloud. Vui lòng đảm bảo AI Server đã được bật thủ công tại máy local của bạn." });
             }
         }
 

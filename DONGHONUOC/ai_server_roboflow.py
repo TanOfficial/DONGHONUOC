@@ -103,8 +103,24 @@ async def doc_so_moi(file: UploadFile = File(...)):
         print(f"\n{'='*60}")
         print(f"Dang gui anh len Roboflow Cloud API...")
         
-        # Gửi ảnh lên Cloud, lấy tất cả với conf=20%
-        res = model.predict(temp_path, confidence=20, overlap=40).json()
+        # Gửi ảnh lên Cloud (Có cơ chế tự động thử lại 3 lần nếu gặp Cold Start 503 từ Roboflow)
+        res = None
+        for attempt in range(1, 4):
+            try:
+                print(f"⏳ Đang gửi ảnh lên Roboflow API (Lần thử {attempt}/3)...")
+                res = model.predict(temp_path, confidence=20, overlap=40).json()
+                if res and "predictions" in res:
+                    break
+            except Exception as predict_err:
+                print(f"⚠️ Lần thử {attempt}/3 thất bại: {predict_err}")
+                if "503" in str(predict_err) or "Service Unavailable" in str(predict_err):
+                    print("ℹ️ Phát hiện Roboflow Serverless đang khởi động lạnh (Cold Start). Đang tự động đợi 2 giây để thử lại...")
+                if attempt < 3:
+                    import time
+                    time.sleep(2)
+                else:
+                    raise predict_err
+        
         predictions = res.get("predictions", [])
         
         digits = []
