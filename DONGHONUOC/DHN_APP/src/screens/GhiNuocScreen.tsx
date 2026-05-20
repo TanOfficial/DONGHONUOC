@@ -312,7 +312,7 @@ const GhiNuocScreen = () => {
                     setCsMoi(aiResult.result);
                     calculateTieuThu(aiResult.result);
                 } else {
-                    Alert.alert("AI không đọc được", aiResult.message);
+                    console.warn("AI không đọc được:", aiResult.message);
                 }
                 // --- KẾT THÚC ---
             } else {
@@ -356,7 +356,7 @@ const GhiNuocScreen = () => {
                     setCsMoi(aiResult.result);
                     calculateTieuThu(aiResult.result);
                 } else {
-                    Alert.alert("AI không đọc được", aiResult.message);
+                    console.warn("AI không đọc được:", aiResult.message);
                 }
                 // --- KẾT THÚC ---
             } else {

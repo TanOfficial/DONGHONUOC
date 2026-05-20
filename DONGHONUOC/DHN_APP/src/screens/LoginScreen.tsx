@@ -29,16 +29,23 @@ const LoginScreen = () => {
     const [showSettings, setShowSettings] = useState(false);
     const [serverIp, setServerIp] = useState('192.168.1.144');
     const [tempIp, setTempIp] = useState('');
+    const [aiServerIp, setAiServerIp] = useState('192.168.1.94');
+    const [tempAiIp, setTempAiIp] = useState('');
 
     useEffect(() => {
         AsyncStorage.getItem('server_ip').then(ip => {
             if (ip) setServerIp(ip);
         });
+        AsyncStorage.getItem('ai_server_ip').then(ip => {
+            if (ip) setAiServerIp(ip);
+        });
     }, []);
 
     const handleOpenSettings = async () => {
         const ip = await AsyncStorage.getItem('server_ip') || serverIp;
+        const aiIp = await AsyncStorage.getItem('ai_server_ip') || aiServerIp;
         setTempIp(ip);
+        setTempAiIp(aiIp);
         setShowSettings(true);
     };
 
@@ -47,8 +54,13 @@ const LoginScreen = () => {
         if (ip) {
             await ApiService.setBaseUrl(ip);
             setServerIp(ip);
-            UIHelper.showCustomSnackBar(`✅ Đã lưu địa chỉ server: ${ip}`, false, true);
         }
+        const aiIp = tempAiIp.trim();
+        if (aiIp) {
+            await ApiService.setAiServerIp(aiIp);
+            setAiServerIp(aiIp);
+        }
+        UIHelper.showCustomSnackBar('✅ Đã lưu cấu hình server!', false, true);
         setShowSettings(false);
     };
 
@@ -108,6 +120,17 @@ const LoginScreen = () => {
                             autoCapitalize="none"
                         />
                         <Text style={styles.modalHint}>Port mặc định: 5000</Text>
+
+                        <Text style={[styles.modalSubtitle, { marginTop: 12 }]}>🤖 IP máy chủ AI (cùng máy với server API)</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            value={tempAiIp}
+                            onChangeText={setTempAiIp}
+                            placeholder="Ví dụ: 192.168.1.94"
+                            keyboardType="url"
+                            autoCapitalize="none"
+                        />
+                        <Text style={styles.modalHint}>Port AI mặc định: 8001</Text>
                         <View style={styles.modalButtons}>
                             <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setShowSettings(false)}>
                                 <Text style={styles.modalBtnCancelText}>Hủy</Text>
