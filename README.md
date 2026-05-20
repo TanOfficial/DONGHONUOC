@@ -47,6 +47,11 @@ Hệ thống hiện tại đã được triển khai thực tế trên môi trư
 *   **API Ảnh Tách Rời:** Endpoint riêng biệt `/api/DocChiSo/hinhanh` phục vụ ảnh Base64 theo nhu cầu (On-Demand).
 *   **Bẫy lỗi Cloud IIS:** Xử lý ngoại lệ khởi chạy Python giúp máy chủ IIS Cloud trả về `200 OK` trơn tru thay vì ném lỗi `500 Internal Server Error` do máy chủ Cloud không có môi trường Python.
 
+#### 4. 🖥️ Phần Mềm Quản Trị Hành Chính (DHN_WF)
+*   Quản trị danh sách nhân viên ghi nước và phân quyền.
+*   Theo dõi tiến độ thực địa của nhân viên theo thời gian thực (Real-time tracking).
+*   Tính tiền nước lũy tiến tự động và xuất hóa đơn PDF trực quan.
+
 ---
 
 ### ⚡ Giải Pháp Tối Ưu Hóa Hiệu Năng (Đặc Điểm Nổi Bật)
