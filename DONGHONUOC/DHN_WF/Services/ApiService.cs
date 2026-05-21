@@ -22,11 +22,14 @@ namespace DHN_WF.Services
             _client = new HttpClient
             {
                 BaseAddress = new Uri(_baseUrl),
-                Timeout = TimeSpan.FromSeconds(30)
+                Timeout = TimeSpan.FromSeconds(90) // Tăng lên 90s để chống lỗi Timeout khi Cloud khởi động (Cold Start)
             };
             // Tự động vượt qua mật khẩu bảo vệ (Password Protection) của SmarterASP
             var authBytes = Encoding.ASCII.GetBytes("11309085:60-dayfreetrial");
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
+            
+            // Thêm User-Agent giả lập trình duyệt để tránh bị Cloud Server chặn (Bot Protection)
+            _client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
         }
 
         public static string GetBaseUrl() => _baseUrl;
@@ -59,7 +62,7 @@ namespace DHN_WF.Services
                     }
                 }
 
-                // Tự động nâng cấp cấu hình cũ sang Cloud URL mới
+                // Luôn ép dùng Cloud URL giống hệt Mobile App để đảm bảo đồng bộ
                 if (string.IsNullOrEmpty(_baseUrl) || !_baseUrl.Contains("shunlyowo-001-site1.jtempurl.com"))
                 {
                     _baseUrl = "http://shunlyowo-001-site1.jtempurl.com/api/";
